@@ -801,6 +801,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           novel_order: "",
           intro_content: "",
           resolution: `${payload.width}x${payload.height}`,
+          uuid: payload.id,
+          content_hash: "",
           created_at: payload.added_at,
           updated_at: payload.added_at,
         };
