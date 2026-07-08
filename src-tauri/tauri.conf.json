@@ -1,0 +1,17 @@
+{
+  "build": { "beforeDevCommand": "npm run dev", "beforeBuildCommand": "npm run build", "devPath": "http://localhost:1420", "distDir": "../dist" },
+  "package": { "productName": "ToolBox", "version": "1.0.0" },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": { "all": true, "open": true },
+      "shell": { "all": false, "open": true },
+      "fs": { "all": true, "scope": ["**"] },
+      "path": { "all": true },
+      "window": { "all": false, "minimize": true, "maximize": true, "unmaximize": true, "close": true, "startDragging": true }
+    },
+    "bundle": { "active": true, "identifier": "com.toolbox.app", "icon": ["icons/icon.ico"] },
+    "windows": [{ "title": "ToolBox 多功能工具箱", "width": 1280, "height": 800, "minWidth": 900, "minHeight": 600, "resizable": true, "fullscreen": false, "decorations": false, "fileDropEnabled": false }],
+    "security": { "csp": null }
+  }
+}

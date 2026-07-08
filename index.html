@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ToolBox 多功能工具箱</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+  <link rel="stylesheet" href="/src/styles.css">
+  <!-- 尽早注册 dragover/drop 防止浏览器默认打开文件 -->
+  <script>
+    // 拦截 dragover：允许拖放
+    document.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    }, true);
+    // 拦截 drop：只阻止浏览器默认行为，不阻止冒泡，让卡片的 onDrop 正常触发
+    document.addEventListener('drop', function(e) {
+      e.preventDefault();
+      // 注意：不调用 stopPropagation()，否则卡片上的 onDrop 无法收到事件
+    }, true);
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

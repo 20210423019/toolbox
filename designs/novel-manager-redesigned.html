@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>小说管理器 — 最终设计</title>
+<style>
+:root {
+  --bg: #0b1120;
+  --bg-card: rgba(12,18,36,0.45);
+  --bg-hover: rgba(96,165,250,0.06);
+  --border: rgba(100,140,220,0.10);
+  --border-hover: rgba(100,140,220,0.20);
+  --text: #f8fafc;
+  --text-secondary: #c8d6e5;
+  --text-muted: #8ba3be;
+  --text-placeholder: #5a6e82;
+  --accent: #60a5fa;
+  --accent-deep: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #fb7185;
+  --radius: 6px;
+  --radius-sm: 4px;
+  --font-sans: 'Segoe UI','SF Pro Text',system-ui,sans-serif;
+  --font-mono: 'Cascadia Code','Fira Code','JetBrains Mono',monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-sans); padding: 32px; min-height: 100vh; }
+.container { max-width: 520px; margin: 0 auto; }
+
+/* ═══ Header ═══ */
+.header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.header-accent { width: 3px; height: 14px; border-radius: 2px; background: var(--accent-deep); flex-shrink: 0; }
+.header-title { font-size: 11px; font-weight: 600; color: var(--text); letter-spacing: 0.3px; }
+.header-count { font-size: 9px; color: var(--text-muted); margin-left: auto; }
+.header-scan { padding: 2px 8px; border-radius: 3px; font-size: 8px; background: rgba(86,156,214,0.12); color: var(--accent); cursor: pointer; font-family: var(--font-sans); font-weight: 500; border: 1px solid rgba(86,156,214,0.2); transition: all 0.15s; }
+.header-scan:hover { background: rgba(86,156,214,0.2); }
+
+/* ═══ Novel Card (独立无容器) ═══ */
+.novel-card { display: flex; align-items: flex-start; gap: 6px; padding: 7px 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 2px; cursor: grab; transition: border-color 0.12s; }
+.novel-card:hover { border-color: var(--border-hover); }
+.novel-card.dragging { opacity: 0.35; }
+.novel-drag { color: var(--text-placeholder); font-size: 10px; flex-shrink: 0; margin-top: 2px; cursor: grab; }
+.novel-icon { width: 20px; height: 20px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+.novel-icon.link { background: rgba(167,139,250,0.10); color: var(--accent-deep); }
+.novel-icon.file { background: rgba(52,211,153,0.10); color: #4ec9b0; }
+.novel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.novel-name { font-size: 10px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.novel-meta { font-size: 7.5px; color: var(--text-muted); display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.novel-badge { padding: 0 4px; border-radius: 2px; font-weight: 600; font-size: 7px; }
+.novel-badge.audio { background: rgba(251,191,36,0.10); color: var(--warning); }
+.novel-badge.links { background: rgba(167,139,250,0.10); color: var(--accent-deep); }
+.novel-badge.file { background: rgba(78,201,176,0.10); color: #4ec9b0; }
+.novel-toggle { margin-left: 6px; font-size: 7px; color: var(--text-placeholder); cursor: pointer; padding: 0 4px; border-radius: 2px; transition: all 0.1s; flex-shrink: 0; user-select: none; }
+.novel-toggle:hover { color: var(--accent-deep); background: rgba(167,139,250,0.06); }
+.novel-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.novel-btn { width: 20px; height: 20px; border: none; border-radius: 2px; background: transparent; cursor: pointer; font-size: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+.novel-btn:hover { background: var(--bg-hover); }
+.novel-btn.copy { color: var(--accent-deep); }
+.novel-btn.delete { color: var(--error); }
+.novel-btn.delete:hover { background: rgba(251,113,133,0.12); }
+
+/* ═══ Links Section (独立非嵌套+折叠) ═══ */
+.links-section { background: rgba(10,16,32,0.5); border: 1px solid rgba(167,139,250,0.08); border-radius: 0 0 var(--radius) var(--radius); margin-bottom: 6px; padding: 4px 8px 4px; }
+.links-section.collapsed { display: none; }
+
+/* link row — 展示模式（备注常态显示） */
+.link-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: var(--radius-sm); cursor: grab; transition: all 0.08s; margin-bottom: 1px; }
+.link-row:hover { background: rgba(167,139,250,0.04); }
+.link-row.dragging { opacity: 0.3; }
+.link-drag { color: var(--text-placeholder); font-size: 7px; cursor: grab; flex-shrink: 0; }
+.link-icon { font-size: 7.5px; color: var(--accent-deep); flex-shrink: 0; }
+.link-url { font-size: 8px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-family: var(--font-mono); }
+.link-note-tag { display: inline-flex; align-items: center; gap: 2px; padding: 0 5px; border-radius: 3px; font-size: 7px; background: rgba(167,139,250,0.08); color: var(--accent-deep); flex-shrink: 0; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 4px; }
+.link-note-tag::before { content: "📝"; font-size: 6px; }
+.link-no-note { margin-left: 4px; font-size: 6.5px; color: var(--text-placeholder); flex-shrink: 0; opacity: 0.5; }
+.link-act-group { margin-left: auto; display: flex; gap: 1px; flex-shrink: 0; }
+.link-act { padding: 1px 4px; border-radius: 2px; border: none; background: transparent; cursor: pointer; font-size: 6.5px; transition: all 0.08s; }
+.link-act:hover { background: var(--bg-hover); }
+.link-act.copy { color: var(--text-muted); }
+.link-act.edit { color: var(--text-muted); }
+.link-act.delete { color: var(--error); }
+
+/* link row — 编辑模式（内联编辑） */
+.link-edit-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: var(--radius-sm); margin-bottom: 1px; background: rgba(167,139,250,0.04); border: 1px solid rgba(167,139,250,0.10); }
+.link-edit-inp { flex: 1; min-width: 40px; padding: 2px 5px; border-radius: 2px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: #d4d4d4; font-size: 7.5px; outline: none; font-family: var(--font-mono); transition: border-color 0.12s; }
+.link-edit-inp:focus { border-color: var(--accent-deep); }
+.link-edit-inp.note { flex: 0 0 80px; font-family: var(--font-sans); }
+.link-edit-inp::placeholder { color: var(--text-placeholder); font-family: var(--font-sans); font-size: 7px; }
+.link-edit-btn { padding: 2px 7px; border-radius: 2px; font-size: 7px; border: none; cursor: pointer; font-family: var(--font-sans); font-weight: 500; transition: all 0.08s; flex-shrink: 0; }
+.link-edit-btn.save { background: rgba(167,139,250,0.12); color: var(--accent-deep); }
+.link-edit-btn.save:hover { background: rgba(167,139,250,0.22); }
+.link-edit-btn.cancel { background: transparent; color: var(--text-muted); }
+.link-edit-btn.cancel:hover { background: var(--bg-hover); }
+.link-edit-btn.delete { padding: 2px 5px; background: transparent; color: var(--error); }
+.link-edit-btn.delete:hover { background: rgba(251,113,133,0.10); }
+
+/* add link */
+.add-link-area { padding: 0 6px; margin-top: 2px; }
+.add-link-btn { padding: 2px 6px; border-radius: 2px; font-size: 6.5px; border: none; background: transparent; color: var(--text-placeholder); cursor: pointer; font-family: var(--font-sans); transition: all 0.08s; }
+.add-link-btn:hover { color: var(--accent-deep); background: rgba(167,139,250,0.06); }
+.add-link-form { display: flex; gap: 4px; padding: 4px 6px; border-radius: var(--radius-sm); background: rgba(167,139,250,0.04); border: 1px solid rgba(167,139,250,0.10); margin-top: 2px; }
+
+/* ═══ Audio ═══ */
+.audio-section { margin-top: 6px; }
+.audio-header { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--border); }
+.audio-label { font-size: 7px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.3px; }
+.audio-count { margin-left: auto; background: rgba(251,191,36,0.08); color: var(--warning); padding: 0 5px; border-radius: 3px; font-size: 8px; }
+.audio-row { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 9px; color: var(--text-muted); }
+.audio-icon { font-size: 10px; }
+.audio-name { flex: 1; font-family: var(--font-mono); font-size: 9px; color: var(--text); }
+.audio-arrow { font-size: 7px; color: var(--text-muted); }
+.audio-play { padding: 1px 6px; border-radius: 2px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 8px; font-family: var(--font-sans); transition: all 0.08s; }
+.audio-play:hover { background: var(--bg-hover); }
+
+/* ═══ Toast ═══ */
+.toast { position: fixed; top: 20px; right: 20px; padding: 8px 16px; border-radius: var(--radius); font-size: 10px; background: rgba(16,24,48,0.95); border: 1px solid rgba(167,139,250,0.15); color: var(--accent-deep); box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200; transition: all 0.3s; opacity: 0; transform: translateY(-10px); }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { border-color: rgba(251,113,133,0.3); color: var(--error); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-accent"></div>
+    <span class="header-title">📚 小说</span>
+    <span class="header-count" id="novelCount">4</span>
+    <button class="header-scan" onclick="scanNovels()">🔍 扫描</button>
+  </div>
+  <div id="novelList"></div>
+  <div id="audioSection" style="display:none" class="audio-section">
+    <div class="audio-header">
+      <span class="audio-label">🎵 配对音频</span>
+      <span class="audio-count" id="audioCount">0</span>
+    </div>
+    <div id="audioList"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let novels = [
+  { name: "青云仙途.txt", size: 284736, hasAudio: true,  links: [{ url: "https://example.com/qingyun/vol1", note: "主链接" }, { url: "https://mirror.example.com/qingyun", note: "备用镜像" }] },
+  { name: "大荒纪元.txt", size: 512000, hasAudio: false, links: [{ url: "https://example.com/dahuang", note: "" }] },
+  { name: "星穹传说.txt", size: 128000, hasAudio: true,  links: [] },
+  { name: "九转丹经.txt", size: 96000,  hasAudio: false, links: [{ url: "https://example.com/nine", note: "主站" }, { url: "https://cdn.example.com/nine", note: "CDN" }, { url: "https://backup.example.com/nine", note: "海外备用" }] },
+];
+let expanded = {};
+let editingLink = null; // "novelIdx-linkIdx" | "novelIdx-add"
+
+function render() { renderNovelList(); renderAudioSection(); updateCount(); }
+
+function renderNovelList() {
+  document.getElementById('novelList').innerHTML = novels.map((n, i) => {
+    const links = n.links || [];
+    const hasLinks = links.length > 0;
+    const exp = expanded[i] ?? false;
+    return `<div class="novel-card${novelDragIdx===i?' dragging':''}" draggable="true"
+        ondragstart="onNovelDragStart(event,${i})" ondragover="onNovelDragOver(event,${i})" ondragend="onNovelDragEnd()">
+        <span class="novel-drag">⠿</span>
+        <div class="novel-icon ${hasLinks?'link':'file'}">${hasLinks?'🔗':'📄'}</div>
+        <div class="novel-body">
+          <div class="novel-name" title="${n.name}">${n.name}</div>
+          <div class="novel-meta">
+            <span>${fmtSize(n.size)}</span>
+            ${n.hasAudio?'<span class="novel-badge audio">🎵 音频</span>':''}
+            ${hasLinks?`<span class="novel-badge links">🔗 ${links.length} 链接</span>`:'<span class="novel-badge file">文件</span>'}
+            ${hasLinks?`<span class="novel-toggle" onclick="event.stopPropagation();toggle(${i})">${exp?'▲':'▼'}</span>`:''}
+          </div>
+        </div>
+        <div class="novel-actions">
+          ${hasLinks?`<button class="novel-btn copy" onclick="event.stopPropagation();copyFirst(${i})" title="复制首链接">📋</button>`:''}
+          <button class="novel-btn delete" onclick="event.stopPropagation();delNovel(${i})">✕</button>
+        </div>
+      </div>
+      ${hasLinks?`<div class="links-section ${exp?'':'collapsed'}">
+        ${links.map((l, li) => {
+          const ek = i+'-'+li;
+          if(editingLink===ek) return linkEditRow(i,li,l.url,l.note);
+          return linkRow(i,li,l);
+        }).join('')}
+        ${editingLink===i+'-add' ? addLinkForm(i) : '<div class="add-link-area"><button class="add-link-btn" onclick="addLink('+i+')">+ 🔗 添加链接</button></div>'}
+      </div>`:''}`;
+  }).join('');
+  novelDragIdx=null;
+}
+
+function linkRow(i,li,l){
+  const noteHtml = l.note
+    ? `<span class="link-note-tag">${l.note}</span>`
+    : `<span class="link-no-note">无备注</span>`;
+  return `<div class="link-row${linkDragKey===i+'-'+li?' dragging':''}" draggable="true"
+    ondragstart="onLinkDrag(event,${i},${li})" ondragover="onLinkDragOver(event,${i},${li})" ondragend="onLinkDragEnd()">
+    <span class="link-drag">⠿</span>
+    <span class="link-icon">🔗</span>
+    <span class="link-url" title="${l.url}">${l.url}</span>
+    ${noteHtml}
+    <span class="link-act-group">
+      <button class="link-act copy" onclick="event.stopPropagation();cp('${esc(l.url)}')">📋</button>
+      <button class="link-act edit" onclick="event.stopPropagation();edt(${i},${li})">✏️</button>
+      <button class="link-act delete" onclick="event.stopPropagation();delLink(${i},${li})">🗑</button>
+    </span>
+  </div>`;
+}
+
+function linkEditRow(i,li,u,n){
+  return `<div class="link-edit-row">
+    <span class="link-icon">🔗</span>
+    <input class="link-edit-inp" id="eu-${i}-${li}" value="${esc(u)}" placeholder="URL" />
+    <input class="link-edit-inp note" id="en-${i}-${li}" value="${esc(n)}" placeholder="备注" />
+    <button class="link-edit-btn save" onclick="saveEdt(${i},${li})">✓</button>
+    <button class="link-edit-btn cancel" onclick="cancelEdt()">✕</button>
+    <button class="link-edit-btn delete" onclick="delLink(${i},${li});cancelEdt()">🗑</button>
+  </div>`;
+}
+
+function addLinkForm(i){
+  return `<div class="add-link-form">
+    <input class="link-edit-inp" id="au-${i}" placeholder="https://..." />
+    <input class="link-edit-inp note" id="an-${i}" placeholder="备注" />
+    <button class="link-edit-btn save" onclick="saveAdd(${i})">添加</button>
+    <button class="link-edit-btn cancel" onclick="cancelEdt()">取消</button>
+  </div>`;
+}
+
+function renderAudioSection(){
+  const a=novels.filter(n=>n.hasAudio);
+  const s=document.getElementById('audioSection');
+  if(!a.length){s.style.display='none';return;}
+  s.style.display='block';
+  document.getElementById('audioCount').textContent=a.length;
+  document.getElementById('audioList').innerHTML=a.map(n=>
+    `<div class="audio-row"><span class="audio-icon">🎵</span><span class="audio-name">${n.name.replace(/\.[^/.]+$/,'')}.mp3</span><span class="audio-arrow">← ${n.name}</span><button class="audio-play" onclick="playA('${n.name}')">▶ 播放</button></div>`
+  ).join('');
+}
+function updateCount(){document.getElementById('novelCount').textContent=novels.length;}
+
+// ═══ toggle / edit ═══
+function toggle(i){expanded[i]=!(expanded[i]??false);render();}
+function edt(i,li){editingLink=i+'-'+li;render();}
+function cancelEdt(){editingLink=null;render();}
+function saveEdt(i,li){
+  const u=document.getElementById('eu-'+i+'-'+li).value.trim();
+  const n=document.getElementById('en-'+i+'-'+li).value.trim();
+  if(!u.startsWith('http://')&&!u.startsWith('https://')){toast('链接格式错误','error');return;}
+  novels[i].links[li]={url:u,note:n};
+  editingLink=null;render();toast('链接已更新');
+}
+function addLink(i){editingLink=i+'-add';render();setTimeout(()=>{const e=document.getElementById('au-'+i);if(e)e.focus();},50);}
+function saveAdd(i){
+  const u=document.getElementById('au-'+i).value.trim();
+  const n=document.getElementById('an-'+i).value.trim();
+  if(!u.startsWith('http://')&&!u.startsWith('https://')){toast('链接格式错误','error');return;}
+  novels[i].links.push({url:u,note:n});
+  editingLink=null;render();toast('链接已添加');
+}
+function delLink(i,li){novels[i].links.splice(li,1);render();toast('链接已删除');}
+
+// ═══ copy ═══
+function copyFirst(i){const f=novels[i].links?.[0];if(f){navigator.clipboard.writeText(f.url).catch(()=>{});toast('首链接已复制');}}
+function cp(u){navigator.clipboard.writeText(u).catch(()=>{});toast('已复制');}
+
+// ═══ drag ═══
+let novelDragIdx=null;
+function onNovelDragStart(e,i){novelDragIdx=i;}
+function onNovelDragOver(e,i){e.preventDefault();if(novelDragIdx===null||novelDragIdx===i)return;const[m]=novels.splice(novelDragIdx,1);novels.splice(i,0,m);novelDragIdx=i;render();}
+function onNovelDragEnd(){novelDragIdx=null;render();}
+let linkDragKey=null;
+function onLinkDrag(e,ni,li){linkDragKey=ni+'-'+li;}
+function onLinkDragOver(e,ni,li){e.preventDefault();if(!linkDragKey)return;const[fni,fli]=linkDragKey.split('-').map(Number);if(fni!==ni||fli===li)return;const[m]=novels[ni].links.splice(fli,1);novels[ni].links.splice(li,0,m);linkDragKey=ni+'-'+li;render();}
+function onLinkDragEnd(){linkDragKey=null;render();}
+
+// ═══ other ═══
+function delNovel(i){if(!confirm('删除 "'+novels[i].name+'"？'))return;novels.splice(i,1);render();toast('小说已删除');}
+function scanNovels(){const b=document.querySelector('.header-scan');b.textContent='⏳ 扫描中...';b.style.opacity='0.6';setTimeout(()=>{toast('扫描完成');b.textContent='🔍 扫描';b.style.opacity='1';},800);}
+function playA(n){toast('🎵 播放: '+n.replace(/\.[^/.]+$/,'')+'.mp3');}
+function fmtSize(b){if(b<=0)return '—';if(b>=1073741824)return (b/1073741824).toFixed(2)+' GB';if(b>=1048576)return (b/1048576).toFixed(1)+' MB';if(b>=1024)return (b/1024).toFixed(0)+' KB';return b+' B';}
+function esc(s){return s.replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function toast(msg,type){const e=document.getElementById('toast');e.textContent=msg;e.className='toast show'+(type==='error'?' error':'');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2000);}
+
+render();
+</script>
+</body>
+</html>

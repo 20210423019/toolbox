@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标签值输入组件 — 设计稿</title>
+<style>
+/* ═══ 暗夜琉璃 v3 设计令牌 ═══ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #070B16; color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+body { display: flex; flex-direction: column; align-items: center; padding: 60px 40px; min-height: 100vh; overflow-x: hidden; }
+
+/* 径向光晕背景 */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse at 25% 15%, rgba(96,165,250,0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(167,139,250,0.05) 0%, transparent 45%);
+}
+
+/* ═══ 页面标题 ═══ */
+.page-header { position: relative; z-index: 1; text-align: center; margin-bottom: 48px; }
+.page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.3px; background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #22D3EE 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.page-header .sub { font-size: 12px; color: #8BA3BE; margin-top: 8px; font-weight: 400; }
+.page-header .sub code { color: #60A5FA; background: rgba(96,165,250,0.08); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; }
+
+/* ═══ 组件舞台 ═══ */
+.stage { position: relative; z-index: 1; width: 100%; max-width: 960px; }
+
+/* ─── 预览场景卡片 ─── */
+.scene-card {
+  background: rgba(15,22,42,0.2); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(100,140,220,0.10); border-radius: 14px; padding: 32px;
+  margin-bottom: 28px; position: relative; overflow: hidden;
+  animation: fadeSlideUp 0.35s ease backwards;
+}
+.scene-card::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.09;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+.scene-card:nth-child(1) { animation-delay: 0s; }
+.scene-card:nth-child(2) { animation-delay: 0.08s; }
+.scene-card:nth-child(3) { animation-delay: 0.16s; }
+.scene-card:nth-child(4) { animation-delay: 0.24s; }
+.scene-card:nth-child(5) { animation-delay: 0.32s; }
+.scene-card:nth-child(6) { animation-delay: 0.40s; }
+.scene-card-title { font-size: 11px; font-weight: 600; color: #8BA3BE; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.scene-card-title .badge { font-size: 9px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: rgba(96,165,250,0.1); color: #60A5FA; text-transform: none; letter-spacing: 0; }
+.scene-card-title .badge.warn { background: rgba(251,191,36,0.1); color: #FBBF24; }
+.scene-card-title .badge.success { background: rgba(52,211,153,0.1); color: #34D399; }
+
+/* ═══ ═══ ═══ 核心组件：TagValueInput ═══ ═══ ═══ */
+.tvi-wrapper { position: relative; width: 100%; max-width: 420px; }
+
+/* ─── 输入框容器 ─── */
+.tvi-input-wrap {
+  display: flex; align-items: center; gap: 0;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(100,140,220,0.10);
+  border-radius: 7px; transition: all 0.15s; position: relative;
+}
+.tvi-input-wrap:focus-within {
+  border-color: #60A5FA; box-shadow: 0 0 0 1px rgba(59,130,246,0.15), 0 0 20px rgba(59,130,246,0.04);
+}
+.tvi-input-wrap.has-value {
+  border-color: rgba(52,211,153,0.25); background: rgba(52,211,153,0.03);
+}
+.tvi-input-wrap.error {
+  border-color: rgba(251,113,133,0.35); background: rgba(251,113,133,0.03);
+}
+
+/* 🔍 前缀图标 */
+.tvi-prefix {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 10px; color: #5A6E82; transition: color 0.15s;
+}
+.tvi-input-wrap:focus-within .tvi-prefix { color: #60A5FA; }
+
+/* ⬜ 输入框本体 */
+.tvi-input {
+  flex: 1; min-width: 0; height: 30px; border: none; background: transparent;
+  color: #F8FAFC; font-size: 12px; padding: 0 4px; outline: none;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+.tvi-input::placeholder { color: #5A6E82; font-family: inherit; font-size: 11px; }
+
+/* ⟳ 加载指示器 */
+.tvi-loader {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tvi-loader .spinner {
+  width: 12px; height: 12px; border: 1.5px solid rgba(100,140,220,0.15);
+  border-top-color: #60A5FA; border-radius: 50%; animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ✕ 清除按钮 */
+.tvi-clear {
+  width: 24px; height: 30px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; cursor: pointer; border: none; background: transparent;
+  color: #5A6E82; font-size: 12px; opacity: 0; transition: all 0.12s;
+}
+.tvi-input-wrap:focus-within .tvi-clear.show { opacity: 1; }
+.tvi-clear.show:hover { color: #FB7185; }
+
+/* ✓ 保存按钮 */
+.tvi-save-btn {
+  width: 24px; height: 24px; border-radius: 5px; border: none; flex-shrink: 0;
+  background: transparent; color: #5A6E82; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s; margin-right: 3px;
+}
+.tvi-save-btn:hover { background: #2563EB; color: #fff; }
+.tvi-save-btn.active { color: #60A5FA; }
+.tvi-save-btn.active:hover { background: #2563EB; color: #fff; }
+
+/* ✕ 取消按钮 */
+.tvi-cancel-btn {
+  width: 24px; height: 24px; border-radius: 5px; border: none; flex-shrink: 0;
+  background: transparent; color: #5A6E82; font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.12s; margin-right: 3px;
+}
+.tvi-cancel-btn:hover { background: rgba(251,113,133,0.12); color: #FB7185; }
+
+/* ═══ 下拉面板 ═══ */
+.tvi-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+  background: rgba(18,25,45,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(100,140,220,0.15); border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5), 0 0 60px rgba(96,165,250,0.03);
+  overflow: hidden; animation: scaleIn 0.12s ease;
+}
+
+/* ─── 下拉头部 ─── */
+.tvi-dd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 6px; border-bottom: 1px solid rgba(100,140,220,0.05);
+}
+.tvi-dd-header .title {
+  font-size: 9px; font-weight: 600; color: #8BA3BE; letter-spacing: 0.4px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 4px;
+}
+.tvi-dd-header .count {
+  font-size: 9px; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  color: #5A6E82; background: rgba(255,255,255,0.04); padding: 1px 6px; border-radius: 4px;
+}
+
+/* ─── 列表容器 ─── */
+.tvi-dd-list { max-height: 200px; overflow-y: auto; padding: 4px 0; overflow-x: hidden; }
+.tvi-dd-list::-webkit-scrollbar { width: 4px; }
+.tvi-dd-list::-webkit-scrollbar-track { background: transparent; }
+.tvi-dd-list::-webkit-scrollbar-thumb { background: rgba(100,140,220,0.10); border-radius: 4px; }
+.tvi-dd-list::-webkit-scrollbar-thumb:hover { background: rgba(100,140,220,0.18); }
+
+/* ─── 选项条目 ─── */
+.tvi-item {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 10px; cursor: pointer; transition: all 0.08s; position: relative;
+  border-left: 2px solid transparent; font-size: 12px;
+}
+.tvi-item:hover { background: rgba(96,165,250,0.06); }
+.tvi-item.highlighted { background: rgba(96,165,250,0.08); border-left-color: #60A5FA; }
+.tvi-item.selected {
+  background: rgba(52,211,153,0.06); border-left-color: #34D399;
+}
+.tvi-item.selected .tvi-item-check { opacity: 1; color: #34D399; }
+
+/* 图标列 */
+.tvi-item-icon { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0; }
+.tvi-item-icon.history { background: rgba(96,165,250,0.08); color: #60A5FA; }
+.tvi-item-icon.new { background: rgba(52,211,153,0.08); color: #34D399; }
+.tvi-item-icon.match { background: rgba(251,191,36,0.08); color: #FBBF24; }
+
+/* 文本列 */
+.tvi-item-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tvi-item-text .label { color: #F8FAFC; }
+.tvi-item-text .highlight { color: #60A5FA; font-weight: 500; }
+.tvi-item-text .sublabel { font-size: 9px; color: #5A6E82; margin-left: 6px; display: inline-block; }
+
+/* 额外信息列 */
+.tvi-item-extra { font-size: 9px; color: #5A6E82; white-space: nowrap; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.tvi-item-extra .usage-count { font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 8px; color: #8BA3BE; background: rgba(255,255,255,0.03); padding: 1px 5px; border-radius: 3px; }
+.tvi-item-extra .tvi-item-check { opacity: 0; font-size: 10px; transition: opacity 0.12s; }
+.tvi-item:hover .tvi-item-check { opacity: 0.5; color: #8BA3BE; }
+
+/* ─── "新建"特殊条目 ─── */
+.tvi-item.is-new { border-top: 1px solid rgba(100,140,220,0.05); margin-top: 2px; padding-top: 8px; }
+.tvi-item.is-new .tvi-item-icon { background: rgba(52,211,153,0.1); color: #34D399; }
+.tvi-item.is-new .tvi-item-text .label { color: #34D399; font-weight: 500; }
+.tvi-item.is-new:hover { background: rgba(52,211,153,0.04); border-left-color: #34D399; }
+
+/* ─── 空状态 ─── */
+.tvi-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 20px 16px; text-align: center; color: #5A6E82;
+}
+.tvi-empty .icon { font-size: 18px; opacity: 0.5; }
+.tvi-empty .msg { font-size: 11px; }
+.tvi-empty .hint { font-size: 9px; color: #5A6E82; max-width: 220px; line-height: 1.6; }
+
+/* ─── 加载状态 ─── */
+.tvi-loading {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 20px; color: #8BA3BE; font-size: 11px;
+}
+.tvi-loading .spinner { width: 14px; height: 14px; border: 1.5px solid rgba(100,140,220,0.12); border-top-color: #60A5FA; border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+/* ═══ 演示区域辅助样式 ═══ */
+.demo-row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.demo-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.component-label { font-size: 10px; color: #5A6E82; margin-top: 4px; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; }
+
+/* ─── Mock Tag Tree Context ─── */
+.mock-context {
+  background: rgba(10,15,30,0.4); border: 1px solid rgba(100,140,220,0.06); border-radius: 10px; padding: 16px; margin-bottom: 20px;
+}
+.mock-context .tag-label { font-size: 10px; color: #8BA3BE; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.mock-context .tag-label .tag-name { color: #F8FAFC; font-weight: 600; }
+.mock-context .tag-label .tag-class { font-size: 9px; background: rgba(96,165,250,0.08); padding: 1px 6px; border-radius: 3px; color: #60A5FA; }
+.mock-context .tag-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.mock-context .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.mock-context .tag-name { font-size: 11px; color: #C8D6E5; }
+.mock-context .tag-desc { font-size: 9px; color: #5A6E82; }
+
+/* ─── 交互提示 ─── */
+.interact-hint { font-size: 10px; color: #5A6E82; margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kbd { display: inline-block; padding: 1px 5px; font-size: 9px; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; background: rgba(255,255,255,0.04); border: 1px solid rgba(100,140,220,0.10); border-radius: 3px; color: #8BA3BE; }
+
+/* ─── 设计标注区 ─── */
+.annotation { font-size: 10px; color: #5A6E82; margin-top: 8px; line-height: 1.6; padding: 8px 10px; background: rgba(100,140,220,0.03); border-radius: 6px; border-left: 2px solid rgba(96,165,250,0.15); }
+.annotation code { color: #60A5FA; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 9px; }
+
+/* ─── 状态展示区 ─── */
+.state-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+
+.state-card {
+  background: rgba(10,15,30,0.3); border: 1px solid rgba(100,140,220,0.06); border-radius: 10px;
+  padding: 16px; text-align: center;
+}
+.state-card .state-title { font-size: 10px; font-weight: 500; color: #8BA3BE; margin-bottom: 8px; }
+.state-card .state-visual { margin: 8px 0; }
+
+/* ─── 动画 ─── */
+@keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+/* ─── 类型徽章 ─── */
+.type-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 8px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
+.type-badge.text { background: rgba(96,165,250,0.08); color: #60A5FA; }
+.type-badge.path { background: rgba(167,139,250,0.08); color: #A78BFA; }
+.type-badge.url { background: rgba(34,211,238,0.08); color: #22D3EE; }
+
+/* ═══ 底部信息 ═══ */
+.footer-info { position: relative; z-index: 1; text-align: center; margin-top: 48px; font-size: 11px; color: #5A6E82; }
+.footer-info a { color: #60A5FA; text-decoration: none; }
+.footer-info a:hover { text-decoration: underline; }
+
+/* 逻辑流程图 */
+.flow-diagram {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px; margin-top: 8px;
+}
+.flow-step { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 6px 10px; background: rgba(10,15,30,0.3); border-radius: 6px; }
+.flow-step .step-num { width: 18px; height: 18px; border-radius: 50%; background: rgba(96,165,250,0.12); color: #60A5FA; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; flex-shrink: 0; }
+.flow-step .step-text { color: #C8D6E5; }
+.flow-step .step-text code { color: #60A5FA; font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size: 10px; }
+.flow-step .arrow { color: #5A6E82; font-size: 10px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>🏷 标签值输入组件</h1>
+  <div class="sub">TagValueInput — 带历史值下拉提示的智能输入组件 · <code>ethereal v3</code></div>
+</div>
+
+<div class="stage">
+
+  <!-- ═══════════ 场景 1: 组件全貌 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      📐 组件全貌 · 交互演示
+      <span class="badge">interactive</span>
+    </div>
+
+    <!-- Mock Tag Context -->
+    <div class="mock-context">
+      <div class="tag-label">
+        🏷 当前标签：<span class="tag-name">「番剧类型」</span>
+        <span class="tag-class">分类：视频属性</span>
+        <span class="type-badge text">TEXT</span>
+      </div>
+      <div class="tag-row">
+        <span class="dot" style="background: #60A5FA;"></span>
+        <span class="tag-name">在下面输入框中尝试输入 "热"、"异"、"后" 等关键字看自动提示</span>
+      </div>
+    </div>
+
+    <!-- 交互组件 -->
+    <div class="tvi-wrapper" id="demo-interactive">
+      <div class="tvi-input-wrap">
+        <span class="tvi-prefix">🔍</span>
+        <input class="tvi-input" id="demo-input" type="text" placeholder="输入标签值…" autocomplete="off" spellcheck="false">
+        <span class="tvi-loader" id="demo-loader" style="display:none;"><span class="spinner"></span></span>
+        <span class="tvi-clear" id="demo-clear">✕</span>
+        <span class="tvi-save-btn" id="demo-save" title="保存值">✓</span>
+        <span class="tvi-cancel-btn" id="demo-cancel" title="取消">✕</span>
+      </div>
+      <!-- 下拉面板（由 JS 控制显隐） -->
+      <div class="tvi-dropdown" id="demo-dropdown" style="display:none;"></div>
+    </div>
+
+    <div class="interact-hint">
+      <span><kbd>↑</kbd> <kbd>↓</kbd> 导航</span>
+      <span><kbd>Enter</kbd> 选中 / 确认新值</span>
+      <span><kbd>Esc</kbd> 关闭下拉</span>
+      <span>🖱 悬停高亮 · 点击选中</span>
+    </div>
+    <div class="annotation">
+      💡 <strong>设计要点：</strong>输入框聚焦时自动加载并展示该标签下的历史值。输入关键字实时过滤下拉列表，支持模糊匹配。
+      当前标签「番剧类型」已存在的值会以 <code>📜 历史值</code> 图标展示。如果输入内容不匹配任何历史值，
+      底部会出现 <code>✨ 新建 "xxx"</code> 条目，支持一键创建新标签值。
+    </div>
+  </div>
+
+  <!-- ═══════════ 场景 2: 设计状态枚举 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      🎨 组件状态矩阵
+      <span class="badge">6 states</span>
+    </div>
+
+    <div class="state-grid">
+
+      <!-- 状态 1: 空状态 -->
+      <div class="state-card">
+        <div class="state-title">① 空状态 · 无历史值</div>
+        <div class="state-visual" style="position:relative; text-align:left;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap">
+              <span class="tvi-prefix">📝</span>
+              <input class="tvi-input" type="text" placeholder="暂无历史值" disabled style="color:#5A6E82;">
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          标签首次使用时，无可用历史值。输入框直接接受任意新输入，保存即创建。
+        </div>
+      </div>
+
+      <!-- 状态 2: 聚焦 · 展示所有历史值 -->
+      <div class="state-card">
+        <div class="state-title">② 聚焦 · 展示全部历史值</div>
+        <div class="state-visual" style="position:relative;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap" style="border-color:#60A5FA; box-shadow:0 0 0 1px rgba(59,130,246,0.15);">
+              <span class="tvi-prefix" style="color:#60A5FA;">🔍</span>
+              <input class="tvi-input" type="text" placeholder="输入标签值…" value="" autocomplete="off" spellcheck="false">
+            </div>
+            <!-- 模拟下拉 -->
+            <div class="tvi-dropdown" style="position:relative; top:4px; display:block; animation:none;">
+              <div class="tvi-dd-header">
+                <span class="title">📜 历史值</span>
+                <span class="count">8 条</span>
+              </div>
+              <div class="tvi-dd-list" style="max-height:160px;">
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">热血番剧</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">12</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">异世界穿越</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">8</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">日常治愈</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">6</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">后宫恋爱</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">5</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          输入框聚焦后立即异步加载历史值。下拉按使用频次降序排列，右侧显示使用次数。
+        </div>
+      </div>
+
+      <!-- 状态 3: 输入过滤 · 有匹配 -->
+      <div class="state-card">
+        <div class="state-title">③ 输入过滤 · 有匹配结果</div>
+        <div class="state-visual" style="position:relative;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap" style="border-color:#60A5FA;">
+              <span class="tvi-prefix" style="color:#60A5FA;">🔍</span>
+              <input class="tvi-input" type="text" value="热" autocomplete="off" spellcheck="false">
+              <span class="tvi-clear show">✕</span>
+            </div>
+            <div class="tvi-dropdown" style="position:relative; top:4px; display:block; animation:none;">
+              <div class="tvi-dd-header">
+                <span class="title">🔍 匹配结果</span>
+                <span class="count">2 条</span>
+              </div>
+              <div class="tvi-dd-list" style="max-height:120px;">
+                <div class="tvi-item highlighted">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text">
+                    <span class="label"><span class="highlight">热</span>血番剧</span>
+                  </span>
+                  <span class="tvi-item-extra"><span class="usage-count">12</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon match">🔥</span>
+                  <span class="tvi-item-text">
+                    <span class="label"><span class="highlight">热</span>门连载</span>
+                    <span class="sublabel">新</span>
+                  </span>
+                  <span class="tvi-item-extra"><span class="usage-count">3</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          输入 "热" 后下拉实时过滤，匹配项高亮关键词。第一项为默认选中（蓝色左边框 + 浅蓝背景）。
+        </div>
+      </div>
+
+      <!-- 状态 4: 无匹配 · 新建提示 -->
+      <div class="state-card">
+        <div class="state-title">④ 无匹配 · 新建提示</div>
+        <div class="state-visual" style="position:relative;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap">
+              <span class="tvi-prefix">🔍</span>
+              <input class="tvi-input" type="text" value="机甲战斗" autocomplete="off" spellcheck="false">
+              <span class="tvi-clear show">✕</span>
+            </div>
+            <div class="tvi-dropdown" style="position:relative; top:4px; display:block; animation:none;">
+              <div class="tvi-empty">
+                <div class="icon">🔍</div>
+                <div class="msg">未找到匹配的历史值</div>
+                <div class="hint">输入内容可作为新标签值保存</div>
+              </div>
+              <div class="tvi-dd-list" style="max-height:60px; padding:0 0 4px;">
+                <div class="tvi-item is-new highlighted">
+                  <span class="tvi-item-icon new">✨</span>
+                  <span class="tvi-item-text"><span class="label">新建 "机甲战斗"</span></span>
+                  <span class="tvi-item-extra"><span class="tvi-item-check" style="opacity:0.5;">Enter ↵</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          无匹配时显示空提示 + "新建" 条目。按 Enter 或点击即可创建全新的标签值。
+          新建条目使用 🟢 绿色标识，与历史值 🔵 蓝色区分。
+        </div>
+      </div>
+
+      <!-- 状态 5: 值已选中 -->
+      <div class="state-card">
+        <div class="state-title">⑤ 值已选中 · 已保存状态</div>
+        <div class="state-visual" style="position:relative;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap has-value">
+              <span class="tvi-prefix" style="color:#34D399;">✓</span>
+              <input class="tvi-input" type="text" value="热血番剧" autocomplete="off" spellcheck="false" style="color:#34D399;">
+              <span class="tvi-clear show">✕</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:4px; font-size:10px;">
+            <span style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; background:rgba(52,211,153,0.08); border-radius:4px; color:#34D399; font-size:9px;">✓ 值已保存</span>
+            <span style="color:#5A6E82; font-size:9px;">点击 ✕ 可清除</span>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          值保存后输入框显示绿色边框 + 绿色对勾前缀。历史选择记录同步更新到 localStorage。
+        </div>
+      </div>
+
+      <!-- 状态 6: 加载中 -->
+      <div class="state-card">
+        <div class="state-title">⑥ 加载中 · 异步历史数据</div>
+        <div class="state-visual" style="position:relative;">
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap" style="border-color:rgba(96,165,250,0.3);">
+              <span class="tvi-prefix">🔍</span>
+              <input class="tvi-input" type="text" placeholder="加载历史值中…" disabled style="color:#5A6E82;">
+              <span class="tvi-loader"><span class="spinner"></span></span>
+            </div>
+            <div class="tvi-dropdown" style="position:relative; top:4px; display:block; animation:none;">
+              <div class="tvi-loading">
+                <span class="spinner"></span>
+                <span>正在加载历史值…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="annotation" style="margin-top:6px; font-size:9px; text-align:left; padding:6px; border-left-width:1px;">
+          首次聚焦或切换标签时异步请求后端。加载期间显示旋转 spinner，
+          输入框旁也有 mini spinner 提示。加载完成后自动展示下拉列表。
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════ 场景 3: 类型变体 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      🔀 标签类型变体
+      <span class="badge">3 variants</span>
+      <span class="badge warn">设计统一</span>
+    </div>
+
+    <div class="demo-row">
+      <!-- Text 类型 -->
+      <div class="demo-col" style="flex:1;">
+        <div class="mock-context" style="padding:12px; margin-bottom:8px;">
+          <div class="tag-row">
+            <span class="dot" style="background:#60A5FA;"></span>
+            <span class="tag-name">番剧类型</span>
+            <span class="type-badge text">TEXT</span>
+          </div>
+        </div>
+        <div class="tvi-wrapper" style="max-width:280px;">
+          <div class="tvi-input-wrap">
+            <span class="tvi-prefix">📝</span>
+            <input class="tvi-input" type="text" placeholder="文本标签值…" value="热血番剧">
+          </div>
+        </div>
+        <div class="component-label">📝 文本 —— 自由输入，历史值提示</div>
+      </div>
+
+      <!-- Path 类型 -->
+      <div class="demo-col" style="flex:1;">
+        <div class="mock-context" style="padding:12px; margin-bottom:8px;">
+          <div class="tag-row">
+            <span class="dot" style="background:#A78BFA;"></span>
+            <span class="tag-name">存储路径</span>
+            <span class="type-badge path">PATH</span>
+          </div>
+        </div>
+        <div class="tvi-wrapper" style="max-width:280px;">
+          <div class="tvi-input-wrap">
+            <span class="tvi-prefix">📁</span>
+            <input class="tvi-input" type="text" placeholder="路径 / 从历史选择…" value="" style="font-family:'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace;">
+            <span style="display:flex; gap:0; margin-right:4px; flex-shrink:0;">
+              <span style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#5A6E82; font-size:12px; border-radius:4px 0 0 4px; transition:all 0.12s;">📂</span>
+              <span style="width:16px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#5A6E82; font-size:8px; border-left:1px solid rgba(100,140,220,0.08);">▼</span>
+            </span>
+          </div>
+        </div>
+        <div class="component-label">📁 路径 —— 输入+浏览按钮，历史路径提示</div>
+      </div>
+
+      <!-- URL 类型 -->
+      <div class="demo-col" style="flex:1;">
+        <div class="mock-context" style="padding:12px; margin-bottom:8px;">
+          <div class="tag-row">
+            <span class="dot" style="background:#22D3EE;"></span>
+            <span class="tag-name">关联链接</span>
+            <span class="type-badge url">URL</span>
+          </div>
+        </div>
+        <div class="tvi-wrapper" style="max-width:280px;">
+          <div class="tvi-input-wrap">
+            <span class="tvi-prefix">🔗</span>
+            <input class="tvi-input" type="text" placeholder="https://…" value="" style="font-family:'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace;">
+            <span style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#5A6E82; font-size:11px; flex-shrink:0;">↗</span>
+          </div>
+        </div>
+        <div class="component-label">🔗 URL —— 链接预览 + 历史链接提示</div>
+      </div>
+    </div>
+    <div class="annotation">
+      💡 三种标签类型共用同一套 <code>TagValueInput</code> 组件，仅变换前缀图标、占位符文本和右侧快捷按钮。
+      历史值下拉机制完全统一：按标签 ID 分组加载历史值，类型无关。图标区分：
+      <code>📝 文本</code> · <code>📁 路径</code> · <code>🔗 URL</code>
+    </div>
+  </div>
+
+  <!-- ═══════════ 场景 4: 数据流 & 逻辑架构 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      🔄 数据流 & 逻辑架构
+      <span class="badge">flow</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+      <!-- 左列：加载流程 -->
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#8BA3BE; margin-bottom:10px;">📥 历史值加载流程</div>
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <span class="step-num">1</span>
+            <span class="step-text">输入框 <code>onFocus</code> 触发加载</span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">2</span>
+            <span class="step-text">检查 <code>historyCache[tagId]</code> 缓存</span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">3</span>
+            <span class="step-text">有缓存 → 直接渲染；无缓存 → 异步请求后端</span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">4</span>
+            <span class="step-text">返回 <code>{ value: string, count: number, lastUsed: string }[]</code></span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">5</span>
+            <span class="step-text">按 <code>count</code> 降序排序 → 渲染下拉列表</span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">6</span>
+            <span class="step-text">写入 <code>historyCache[tagId]</code> 缓存 + <code>localStorage</code></span>
+            <span class="arrow">✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右列：用户操作分支 -->
+      <div>
+        <div style="font-size:11px; font-weight:600; color:#8BA3BE; margin-bottom:10px;">📤 用户操作分支</div>
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <span class="step-num">A</span>
+            <span class="step-text">用户输入文字 → 实时过滤历史列表</span>
+            <span class="arrow">↓</span>
+          </div>
+          <div class="flow-step">
+            <span class="step-num">B1</span>
+            <span class="step-text">选中已有历史值 → <code>onSelect(tagId, value)</code></span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step" style="margin-top:4px;">
+            <span class="step-num">B2</span>
+            <span class="step-text">无匹配 + Enter → <code>onNew(tagId, newValue)</code></span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step" style="margin-top:4px;">
+            <span class="step-num">B3</span>
+            <span class="step-text">点击 ✕ 清除 → <code>onClear(tagId)</code></span>
+            <span class="arrow">→</span>
+          </div>
+          <div class="flow-step" style="margin-top:4px;">
+            <span class="step-num">C</span>
+            <span class="step-text">保存后更新 <code>historyCache</code> + 计数递增</span>
+            <span class="arrow">✓</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 接口定义 -->
+    <div style="margin-top:16px; padding:12px; background:rgba(10,15,30,0.3); border-radius:8px; font-size:11px; line-height:1.7;">
+      <div style="color:#8BA3BE; font-weight:600; margin-bottom:6px;">🧩 组件接口定义 (Props)</div>
+      <pre style="font-family:'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size:10px; color:#C8D6E5; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; overflow-x:auto;"><span style="color:#60A5FA;">interface</span> TagValueInputProps {
+  <span style="color:#A78BFA;">tagId</span>: string;              <span style="color:#5A6E82;">// 当前标签 ID</span>
+  <span style="color:#A78BFA;">tagName</span>: string;            <span style="color:#5A6E82;">// 标签名称（用于显示）</span>
+  <span style="color:#A78BFA;">tagType</span>: <span style="color:#22D3EE;">"text"</span> <span style="color:#8BA3BE;">|</span> <span style="color:#22D3EE;">"path"</span> <span style="color:#8BA3BE;">|</span> <span style="color:#22D3EE;">"url"</span>;  <span style="color:#5A6E82;">// 标签类型</span>
+  <span style="color:#A78BFA;">value</span>?: string;              <span style="color:#5A6E82;">// 当前值（受控）</span>
+  <span style="color:#A78BFA;">placeholder</span>?: string;        <span style="color:#5A6E82;">// 占位符</span>
+  <span style="color:#A78BFA;">onChange</span>: (value: string) => void;  <span style="color:#5A6E82;">// 值变更回调</span>
+  <span style="color:#A78BFA;">onSave</span>: (value: string) => void;     <span style="color:#5A6E82;">// 保存回调</span>
+  <span style="color:#A78BFA;">onCancel</span>?: () => void;      <span style="color:#5A6E82;">// 取消编辑</span>
+  <span style="color:#A78BFA;">historyFetcher</span>?: (tagId: string) => Promise&lt;HistoryItem[]&gt;;  <span style="color:#5A6E82;">// 自定义加载器</span>
+  <span style="color:#A78BFA;">maxHistory</span>?: number;         <span style="color:#5A6E82;">// 最多显示历史条数 (默认 20)</span>
+  <span style="color:#A78BFA;">autoFocus</span>?: boolean;         <span style="color:#5A6E82;">// 自动聚焦</span>
+}</pre>
+    </div>
+
+    <div style="margin-top:12px; padding:12px; background:rgba(10,15,30,0.3); border-radius:8px; font-size:11px; line-height:1.7;">
+      <div style="color:#8BA3BE; font-weight:600; margin-bottom:6px;">📦 数据模型</div>
+      <pre style="font-family:'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; font-size:10px; color:#C8D6E5; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px; overflow-x:auto;"><span style="color:#60A5FA;">interface</span> HistoryItem {
+  value: string;        <span style="color:#5A6E82;">// 历史值内容</span>
+  count: number;        <span style="color:#5A6E82;">// 使用次数</span>
+  lastUsed: string;     <span style="color:#5A6E82;">// 最后使用时间 (ISO)</span>
+}
+
+<span style="color:#60A5FA;">interface</span> ComponentState {
+  isOpen: boolean;              <span style="color:#5A6E82;">// 下拉是否打开</span>
+  highlightedIndex: number;     <span style="color:#5A6E82;">// 键盘导航高亮索引</span>
+  historyItems: HistoryItem[];  <span style="color:#5A6E82;">// 历史值列表</span>
+  filteredItems: HistoryItem[]; <span style="color:#5A6E82;">// 过滤后列表</span>
+  isLoading: boolean;           <span style="color:#5A6E82;">// 是否加载中</span>
+  inputValue: string;           <span style="color:#5A6E82;">// 当前输入值</span>
+}</pre>
+    </div>
+  </div>
+
+  <!-- ═══════════ 场景 5: 键盘交互规范 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      ⌨️ 键盘交互规范
+      <span class="badge">a11y</span>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px;">
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">聚焦</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Tab</span> <span style="color:#5A6E82; font-size:10px;">→ 聚焦输入框</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Click</span> <span style="color:#5A6E82; font-size:10px;">→ 自动加载历史值</span>
+        </div>
+      </div>
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">导航</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">↑</span> <span style="color:#5A6E82; font-size:10px;">→ 上移高亮</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">↓</span> <span style="color:#5A6E82; font-size:10px;">→ 下移高亮（循环）</span>
+        </div>
+      </div>
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">选中</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Enter</span> <span style="color:#5A6E82; font-size:10px;">→ 选中高亮项 / 新建</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Click</span> <span style="color:#5A6E82; font-size:10px;">→ 直接选中该项</span>
+        </div>
+      </div>
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">关闭</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Escape</span> <span style="color:#5A6E82; font-size:10px;">→ 关闭下拉</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Click 外部</span> <span style="color:#5A6E82; font-size:10px;">→ 关闭下拉</span>
+        </div>
+      </div>
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">确认</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Enter</span> <span style="color:#5A6E82; font-size:10px;">→ 保存值（下拉关闭时）</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Tab</span> <span style="color:#5A6E82; font-size:10px;">→ 保存 + 聚焦下一元素</span>
+        </div>
+      </div>
+      <div style="background:rgba(10,15,30,0.3); border:1px solid rgba(100,140,220,0.06); border-radius:8px; padding:12px;">
+        <div style="font-size:10px; font-weight:500; color:#8BA3BE;">清除</div>
+        <div style="margin-top:4px;">
+          <span class="kbd">✕ 按钮</span> <span style="color:#5A6E82; font-size:10px;">→ 清除输入值</span>
+        </div>
+        <div style="margin-top:4px;">
+          <span class="kbd">Ctrl+Backspace</span> <span style="color:#5A6E82; font-size:10px;">→ 一次性清除</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 场景 6: 集成到 TagTree 中的渲染位置 ═══════════ -->
+  <div class="scene-card">
+    <div class="scene-card-title">
+      🔗 集成到 TagTree 中的渲染位置
+      <span class="badge">integration</span>
+    </div>
+
+    <div style="display:flex; gap:20px; align-items:flex-start;">
+      <!-- 左：TagTree 当前实现（简化展示） -->
+      <div style="flex:1; background:rgba(10,15,30,0.4); border:1px solid rgba(100,140,220,0.06); border-radius:10px; overflow:hidden;">
+        <div style="padding:8px 14px; border-bottom:1px solid rgba(100,140,220,0.05); font-size:10px; color:#8BA3BE;">当前实现 (TagTree.tsx)</div>
+        <div style="padding:10px;">
+          <div style="font-size:11px; color:#C8D6E5; margin-bottom:6px;">🏷 番剧类型</div>
+          <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(100,140,220,0.10); border-radius:4px; padding:4px 8px; display:flex; align-items:center; gap:4px;">
+            <span style="width:18px; font-size:9px; color:#5A6E82;">📝</span>
+            <input type="text" value="热血番剧" style="flex:1; border:none; background:transparent; color:#F8FAFC; font-size:11px; font-family:'Cascadia Code', 'JetBrains Mono', 'Fira Code', Consolas, monospace; outline:none; min-width:0;">
+            <span style="width:18px; font-size:10px; color:#2563EB; cursor:pointer;">✓</span>
+          </div>
+          <div style="font-size:9px; color:#5A6E82; margin-top:4px;">当前为内联 input，无历史提示</div>
+        </div>
+      </div>
+
+      <!-- 箭头 -->
+      <div style="display:flex; align-items:center; padding-top:40px; font-size:16px; color:#5A6E82;">→</div>
+
+      <!-- 右：新设计 -->
+      <div style="flex:1; background:rgba(10,15,30,0.4); border:1px solid rgba(96,165,250,0.10); border-radius:10px; overflow:hidden; box-shadow:0 0 20px rgba(96,165,250,0.03);">
+        <div style="padding:8px 14px; border-bottom:1px solid rgba(100,140,220,0.05); font-size:10px; color:#60A5FA; display:flex; align-items:center; gap:4px;"><span style="font-size:8px;">✨</span> 新设计 (TagValueInput)</div>
+        <div style="padding:10px;">
+          <div style="font-size:11px; color:#C8D6E5; margin-bottom:6px;">🏷 番剧类型</div>
+          <div class="tvi-wrapper" style="max-width:100%;">
+            <div class="tvi-input-wrap has-value" style="border-color:rgba(52,211,153,0.25);">
+              <span class="tvi-prefix" style="color:#34D399;">✓</span>
+              <input class="tvi-input" type="text" value="热血番剧" style="color:#34D399;">
+              <span class="tvi-clear show">✕</span>
+              <span class="tvi-save-btn active">✓</span>
+            </div>
+            <div class="tvi-dropdown" style="position:relative; top:4px; display:block; animation:none;">
+              <div class="tvi-dd-header">
+                <span class="title">🔍 相关历史值</span>
+                <span class="count">4 条</span>
+              </div>
+              <div class="tvi-dd-list" style="max-height:140px;">
+                <div class="tvi-item selected">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">热血番剧</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">12</span><span class="tvi-item-check" style="opacity:1;">✓</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">异世界穿越</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">8</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">日常治愈</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">6</span></span>
+                </div>
+                <div class="tvi-item">
+                  <span class="tvi-item-icon history">📜</span>
+                  <span class="tvi-item-text"><span class="label">后宫恋爱</span></span>
+                  <span class="tvi-item-extra"><span class="usage-count">5</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:9px; color:#34D399; margin-top:4px;">带历史值下拉提示，支持快速选填</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-info">
+  TagValueInput 组件设计 · 暗夜琉璃 v3 设计系统 · 适用于 TagTree.tsx 第 612-627 行 inline input 改造
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  交互演示 · 模拟历史数据
+// ═══════════════════════════════════════════════════════════════
+
+const MOCK_HISTORY = [
+  { value: "热血番剧", count: 12, lastUsed: "2026-07-06T10:30:00Z" },
+  { value: "异世界穿越", count: 8, lastUsed: "2026-07-05T14:20:00Z" },
+  { value: "日常治愈", count: 6, lastUsed: "2026-07-04T09:15:00Z" },
+  { value: "后宫恋爱", count: 5, lastUsed: "2026-07-03T18:00:00Z" },
+  { value: "悬疑推理", count: 4, lastUsed: "2026-07-02T11:45:00Z" },
+  { value: "搞笑日常", count: 4, lastUsed: "2026-07-01T16:30:00Z" },
+  { value: "热门连载", count: 3, lastUsed: "2026-06-30T20:10:00Z" },
+  { value: "科幻星际", count: 2, lastUsed: "2026-06-28T08:00:00Z" },
+];
+
+// ─── 状态管理 ───
+let highlightedIndex = -1;
+let filteredItems = [...MOCK_HISTORY];
+let isOpen = false;
+let selectedValue = "";
+
+const input = document.getElementById("demo-input");
+const dropdown = document.getElementById("demo-dropdown");
+const loader = document.getElementById("demo-loader");
+const clearBtn = document.getElementById("demo-clear");
+const saveBtn = document.getElementById("demo-save");
+const cancelBtn = document.getElementById("demo-cancel");
+
+// ─── 过滤函数 ───
+function filterItems(query) {
+  if (!query.trim()) return [...MOCK_HISTORY];
+  const q = query.toLowerCase();
+  return MOCK_HISTORY.filter(item => item.value.toLowerCase().includes(q));
+}
+
+// ─── 渲染下拉 ───
+function renderDropdown(items, query) {
+  if (!isOpen) { dropdown.style.display = "none"; return; }
+
+  const q = query.trim().toLowerCase();
+  const matched = items || filterItems(q);
+  const hasExactMatch = matched.some(item => item.value.toLowerCase() === q);
+  const showNew = q.length > 0 && !hasExactMatch;
+
+  let html = "";
+
+  // 头部
+  html += `<div class="tvi-dd-header">
+    <span class="title">${showNew ? "🔍 匹配结果" : "📜 历史值"}</span>
+    <span class="count">${matched.length + (showNew ? 1 : 0)} 条</span>
+  </div>`;
+
+  // 列表
+  if (matched.length === 0 && !showNew) {
+    // 空状态（无匹配且无新建）
+    const emptyMsg = q ? `未找到 "<span style="color:#60A5FA;">${escapeHtml(q)}</span>" 的匹配` : "暂无历史值";
+    html += `<div class="tvi-empty"><div class="icon">🔍</div><div class="msg">${emptyMsg}</div>`;
+    if (q) html += `<div class="hint">输入内容可作为新标签值保存</div>`;
+    html += `</div>`;
+  } else {
+    html += `<div class="tvi-dd-list" style="max-height:160px;">`;
+
+    // 历史匹配项
+    matched.forEach((item, idx) => {
+      const hlClass = idx === highlightedIndex ? " highlighted" : "";
+      const selClass = item.value === selectedValue ? " selected" : "";
+      const displayValue = q ? highlightMatch(item.value, q) : item.value;
+      html += `<div class="tvi-item${hlClass}${selClass}" data-index="${idx}" data-value="${escapeHtml(item.value)}">
+        <span class="tvi-item-icon history">📜</span>
+        <span class="tvi-item-text"><span class="label">${displayValue}</span></span>
+        <span class="tvi-item-extra">
+          <span class="usage-count">${item.count}</span>
+          <span class="tvi-item-check">${selClass ? "✓" : ""}</span>
+        </span>
+      </div>`;
+    });
+
+    // "新建"条目
+    if (showNew) {
+      const isNewHl = highlightedIndex >= matched.length;
+      html += `<div class="tvi-item is-new${isNewHl ? " highlighted" : ""}" data-index="${matched.length}" data-new="1">
+        <span class="tvi-item-icon new">✨</span>
+        <span class="tvi-item-text"><span class="label">新建 "${escapeHtml(q)}"</span></span>
+        <span class="tvi-item-extra"><span class="tvi-item-check" style="opacity:0.5;">Enter ↵</span></span>
+      </div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  dropdown.innerHTML = html;
+  dropdown.style.display = "block";
+  filteredItems = matched;
+  highlightedIndex = Math.min(highlightedIndex, (showNew ? matched.length : matched.length - 1));
+  if (highlightedIndex < 0 && matched.length > 0) highlightedIndex = 0;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function highlightMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return escapeHtml(text);
+  return escapeHtml(text.slice(0, idx)) + '<span class="highlight">' + escapeHtml(text.slice(idx, idx + query.length)) + '</span>' + escapeHtml(text.slice(idx + query.length));
+}
+
+// ─── 事件绑定 ───
+
+// 聚焦 → 展示历史值
+input.addEventListener("focus", () => {
+  if (!isOpen) {
+    // 模拟加载延迟
+    loader.style.display = "flex";
+    setTimeout(() => {
+      loader.style.display = "none";
+      isOpen = true;
+      highlightedIndex = -1;
+      renderDropdown(filterItems(input.value), input.value);
+    }, 300);
+  }
+});
+
+// 输入 → 实时过滤
+input.addEventListener("input", () => {
+  highlightedIndex = -1;
+  if (input.value.length > 0) {
+    clearBtn.classList.add("show");
+  } else {
+    clearBtn.classList.remove("show");
+  }
+  isOpen = true;
+  renderDropdown(filterItems(input.value), input.value);
+});
+
+// 键盘导航
+input.addEventListener("keydown", (e) => {
+  const items = dropdown.querySelectorAll(".tvi-item");
+  const maxIdx = items.length - 1;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    highlightedIndex = Math.min(highlightedIndex + 1, maxIdx);
+    renderDropdown(filteredItems, input.value);
+    scrollToHighlighted();
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    highlightedIndex = Math.max(highlightedIndex - 1, 0);
+    renderDropdown(filteredItems, input.value);
+    scrollToHighlighted();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+      const item = items[highlightedIndex];
+      const isNew = item.dataset.new === "1";
+      if (isNew) {
+        selectNewValue(input.value);
+      } else {
+        selectValue(item.dataset.value);
+      }
+    } else if (input.value.trim()) {
+      selectNewValue(input.value);
+    }
+  } else if (e.key === "Escape") {
+    isOpen = false;
+    dropdown.style.display = "none";
+  } else if (e.key === "Tab") {
+    if (input.value.trim()) {
+      // Tab 保存
+      saveValue(input.value);
+    }
+  }
+});
+
+// 鼠标选中（委托）
+dropdown.addEventListener("click", (e) => {
+  const item = e.target.closest(".tvi-item");
+  if (!item) return;
+  if (item.dataset.new === "1") {
+    selectNewValue(input.value);
+  } else {
+    selectValue(item.dataset.value);
+  }
+});
+
+// 点击外部关闭
+document.addEventListener("mousedown", (e) => {
+  const wrap = document.querySelector(".tvi-wrapper");
+  if (wrap && !wrap.contains(e.target) && isOpen) {
+    isOpen = false;
+    dropdown.style.display = "none";
+  }
+});
+
+function scrollToHighlighted() {
+  const items = dropdown.querySelectorAll(".tvi-item");
+  if (items[highlightedIndex]) {
+    items[highlightedIndex].scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+// ─── 选中值 ───
+function selectValue(value) {
+  selectedValue = value;
+  input.value = value;
+  input.focus();
+  isOpen = false;
+  dropdown.style.display = "none";
+  clearBtn.classList.add("show");
+
+  // 设置绿色已保存状态
+  const wrap = input.closest(".tvi-input-wrap");
+  wrap.classList.add("has-value");
+  const prefix = wrap.querySelector(".tvi-prefix");
+  if (prefix) prefix.textContent = "✓";
+  if (prefix) prefix.style.color = "#34D399";
+  input.style.color = "#34D399";
+}
+
+function selectNewValue(value) {
+  selectedValue = value;
+  // 添加到历史并更新计数
+  const existing = MOCK_HISTORY.find(item => item.value.toLowerCase() === value.toLowerCase());
+  if (existing) {
+    existing.count += 1;
+  } else {
+    MOCK_HISTORY.push({ value, count: 1, lastUsed: new Date().toISOString() });
+  }
+  selectValue(value);
+}
+
+function saveValue(value) {
+  selectNewValue(value);
+}
+
+// ─── 清除 ───
+clearBtn.addEventListener("click", () => {
+  input.value = "";
+  selectedValue = "";
+  clearBtn.classList.remove("show");
+  isOpen = true;
+  highlightedIndex = -1;
+  renderDropdown(filterItems(""), "");
+
+  const wrap = input.closest(".tvi-input-wrap");
+  wrap.classList.remove("has-value");
+  const prefix = wrap.querySelector(".tvi-prefix");
+  if (prefix) prefix.textContent = "🔍";
+  if (prefix) prefix.style.color = "";
+  input.style.color = "";
+  input.focus();
+});
+
+// ─── 保存按钮 ───
+saveBtn.addEventListener("click", () => {
+  if (input.value.trim()) {
+    selectNewValue(input.value);
+  }
+});
+
+// ─── 取消按钮 ───
+cancelBtn.addEventListener("click", () => {
+  input.value = selectedValue || "";
+  clearBtn.classList.toggle("show", !!input.value);
+  isOpen = false;
+  dropdown.style.display = "none";
+  input.blur();
+});
+
+// 初始化：如果已有值，保持状态
+input.value = "";
+</script>
+
+</body>
+</html>

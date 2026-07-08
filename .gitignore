@@ -1,0 +1,53 @@
+# ── Node ──
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Build output ──
+dist/
+dist-ssr/
+
+# ── Rust / Tauri ──
+src-tauri/target/
+src-tauri/*.d
+src-tauri/*.o
+src-tauri/*.rmeta
+src-tauri/*.rlib
+src-tauri/*.bin
+src-tauri/*.exe
+src-tauri/*.pdb
+src-tauri/Cargo.lock
+
+# ── IDE / Editor ──
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Logs ──
+*.log
+logs/
+
+# ── Env ──
+.env
+.env.local
+.env.*.local
+
+# ── CodeBuddy ──
+.codebuddy/
+
+# ── TypeScript ──
+*.tsbuildinfo
+
+# ── Test artifacts ──
+test-results/
+playwright-report/
