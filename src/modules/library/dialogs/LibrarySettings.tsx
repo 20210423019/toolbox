@@ -188,7 +188,7 @@ export default function LibrarySettings() {
     setCoverScanRules(parsedRules);
 
     if ((currentLib as any).card_info_fields) {
-      try { const parsed = JSON.parse((currentLib as any).card_info_fields); if (Array.isArray(parsed) && parsed.length > 0) { setShowFields(parsed); useAppStore.getState().setCardInfoFields(parsed); } } catch {}
+      try { const parsed = JSON.parse((currentLib as any).card_info_fields); if (Array.isArray(parsed)) { setShowFields(parsed); useAppStore.getState().setCardInfoFields(parsed); } } catch {}
     }
     if ((currentLib as any).card_tag_ids) {
       try { const parsed = JSON.parse((currentLib as any).card_tag_ids); if (Array.isArray(parsed)) setCardDisplayTagIds(parsed); } catch {}

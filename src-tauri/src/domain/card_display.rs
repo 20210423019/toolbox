@@ -12,7 +12,7 @@ pub struct CardDisplayConfig {
 impl Default for CardDisplayConfig {
     fn default() -> Self {
         Self {
-            info_fields: vec!["size".into(), "date".into(), "resolution".into()],
+            info_fields: vec![],
             tag_ids: vec![],
         }
     }
@@ -23,12 +23,7 @@ impl CardDisplayConfig {
         let parse = |json: Option<&str>| -> Vec<String> {
             json.and_then(|s| serde_json::from_str::<Vec<String>>(s).ok()).unwrap_or_default()
         };
-        let fields = parse(info_fields);
-        let tags = parse(tag_ids);
-        if fields.is_empty() && tags.is_empty() {
-            return Self::default();
-        }
-        Self { info_fields: fields, tag_ids: tags }
+        Self { info_fields: parse(info_fields), tag_ids: parse(tag_ids) }
     }
 
     pub fn info_fields_json(&self) -> String {

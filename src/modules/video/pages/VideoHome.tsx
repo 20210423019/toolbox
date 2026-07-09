@@ -133,6 +133,26 @@ export default function VideoHome() {
       return arr;
     });
   }, []);
+  const [dragCatId, setDragCatId] = useState<string | null>(null);
+  const [dragOverCatId, setDragOverCatId] = useState<string | null>(null);
+  const handleCatDragStart = (id: string) => setDragCatId(id);
+  const handleCatDragOver = (id: string) => { if (id !== dragCatId) setDragOverCatId(id); };
+  const handleCatDragEnd = () => {
+    if (dragCatId && dragOverCatId && dragCatId !== dragOverCatId) {
+      const sorted = [...categories];
+      const fromIdx = sorted.findIndex(c => c.id === dragCatId);
+      const toIdx = sorted.findIndex(c => c.id === dragOverCatId);
+      if (fromIdx >= 0 && toIdx >= 0) {
+        const [moved] = sorted.splice(fromIdx, 1);
+        sorted.splice(toIdx, 0, moved);
+        sorted.forEach((cat, idx) => {
+          useAppStore.getState().updateCategorySort(cat.id, idx);
+        });
+      }
+    }
+    setDragCatId(null);
+    setDragOverCatId(null);
+  };
 
   // 首次加载 — 若无分类则创建默认数据，全部初始折叠
   useEffect(() => {
@@ -252,9 +272,12 @@ export default function VideoHome() {
           {categories.map((cat) => {
             const isExpanded = expandedCats.has(cat.id);
             return (
-              <div key={cat.id} className="vh-cat-wrap">
+              <div key={cat.id} className="vh-cat-wrap"
+                style={{ opacity: dragCatId === cat.id ? 0.4 : 1, transition: "opacity 0.15s" }}>
                 <CategoryCard
                   cat={cat}
+                  index={categories.indexOf(cat)}
+                  totalCount={categories.length}
                   isExpanded={isExpanded}
                   onToggle={(id) => setExpandedCats(prev => {
                     const n = new Set(prev);
@@ -262,6 +285,10 @@ export default function VideoHome() {
                     return n;
                   })}
                   onCreateLibrary={handleCreateLibrary}
+                  onDragCatStart={handleCatDragStart}
+                  onDragCatOver={handleCatDragOver}
+                  onDragCatEnd={handleCatDragEnd}
+                  isDragTarget={dragOverCatId === cat.id}
                 />
                 <CollapsibleSection isOpen={isExpanded}>
                   <LibraryList

@@ -20,12 +20,19 @@ function formatSize(bytes: number | null | undefined): string {
 
 interface Props {
   cat: any;
+  index: number;
+  totalCount: number;
   isExpanded: boolean;
   onToggle: (id: string) => void;
   onCreateLibrary: (catId: string) => void;
+  onDragCatStart?: (id: string) => void;
+  onDragCatOver?: (id: string) => void;
+  onDragCatEnd?: () => void;
+  isDragTarget?: boolean;
 }
 
-export default function CategoryCard({ cat, isExpanded, onToggle, onCreateLibrary }: Props) {
+export default function CategoryCard({ cat, index, totalCount, isExpanded, onToggle, onCreateLibrary,
+  onDragCatStart, onDragCatOver, onDragCatEnd, isDragTarget }: Props) {
   const { border, accent, text, hover, status } = useTheme();
   const [hovered, setHovered] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -51,15 +58,35 @@ export default function CategoryCard({ cat, isExpanded, onToggle, onCreateLibrar
     else if (e.key === "Escape") setEditing(false);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", cat.id);
+    onDragCatStart?.(cat.id);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    onDragCatOver?.(cat.id);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDragCatEnd?.();
+  };
+
   return (
     <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={onDragCatEnd}
+      onDrop={handleDrop}
       style={{
         display: "flex", alignItems: "center", gap: 12,
         padding: "10px 16px",
         borderRadius: 16,
         background: hovered ? "rgba(18,26,38,0.5)" : "rgba(15,22,32,0.35)",
-        border: `1px solid ${hovered ? border.hover : border.default}`,
-        cursor: "pointer", userSelect: "none",
+        border: `1px solid ${isDragTarget ? accent.primary : (hovered ? border.hover : border.default)}`,
+        cursor: "grab", userSelect: "none",
         transition: "all 0.2s ease",
         position: "relative",
       }}
@@ -67,6 +94,8 @@ export default function CategoryCard({ cat, isExpanded, onToggle, onCreateLibrar
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Drag handle */}
+      <div style={{ color: text.muted, fontSize: 10, opacity: 0.35, flexShrink: 0, cursor: "grab", padding: 2 }}>⠿</div>
       {/* Expand arrow */}
       <div className="cat-expand" style={{
         width: 20, height: 20, borderRadius: 4,

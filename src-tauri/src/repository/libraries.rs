@@ -190,6 +190,15 @@ pub fn insert(conn: &Connection, lib: &Library) -> AppResult<()> {
     Ok(())
 }
 
+pub fn update_sort(conn: &Connection, id: &str, sort_order: i32) -> AppResult<()> {
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE libraries SET sort_order=?1, updated_at=?2 WHERE id=?3",
+        params![sort_order, now, id],
+    ).map_err(AppError::Db)?;
+    Ok(())
+}
+
 pub fn delete(conn: &Connection, id: &str) -> AppResult<()> {
     // 包裹在事务中，保证库及其全部关联数据原子删除；任一步失败整体回滚
     conn.execute_batch("BEGIN TRANSACTION").map_err(AppError::Db)?;

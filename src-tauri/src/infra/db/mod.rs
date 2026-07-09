@@ -54,7 +54,7 @@ impl DbPool {
                 filter_formats TEXT DEFAULT '.mp4,.mov,.avi,.mkv,.webm,.flv',
                 filter_mode TEXT DEFAULT 'whitelist',
                 scan_interval INTEGER DEFAULT 0, last_scan_at TEXT DEFAULT '', auto_scan INTEGER DEFAULT 0,
-                card_info_fields TEXT DEFAULT '[\"size\",\"date\",\"resolution\"]',
+                card_info_fields TEXT DEFAULT '[]',
                 card_tag_ids TEXT DEFAULT '[]',
                 exclude_paths TEXT DEFAULT '',
                 auto_clean_days INTEGER DEFAULT 0,

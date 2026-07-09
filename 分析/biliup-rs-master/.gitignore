@@ -1,0 +1,13 @@
+/target
+.idea
+*.mp4
+*.flv
+*.exe
+*.png
+*.part
+data.db*
+*.whl
+.vscode
+*.json
+*.yaml
+.venv/

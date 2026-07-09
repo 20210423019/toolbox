@@ -181,6 +181,7 @@ pub fn run() {
             command::libraries::create_library,
             command::libraries::update_library,
             command::libraries::delete_library,
+            command::libraries::update_library_sort,
             command::libraries::set_primary_cover,
             command::libraries::reorder_covers,
             command::libraries::read_file_as_data_url,

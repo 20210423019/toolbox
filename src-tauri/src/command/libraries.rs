@@ -115,6 +115,14 @@ pub fn update_library(
 }
 
 #[tauri::command]
+pub fn update_library_sort(db: State<DbPool>, cache: State<'_, Arc<CatalogCache>>, id: String, sortOrder: i32) -> Result<(), String> {
+    let conn = db.app.lock().map_err(|e| { tracing::error!(target: "libraries", "更新排序失败: {}", e); e.to_string() })?;
+    crate::repository::libraries::update_sort(&conn, &id, sortOrder).map_err(|e| format!("{:?}", e))?;
+    cache.invalidate_libraries(None);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn delete_library(db: State<DbPool>, cache: State<'_, Arc<CatalogCache>>, thumbnail_engine: State<'_, Arc<ThumbnailEngine>>, cover_cache: State<'_, Arc<CoverCache>>, id: String) -> Result<(), String> {
     tracing::info!(target: "libraries", "删除媒体库: id={}", id);
     let conn = db.app.lock().map_err(|e| { tracing::error!(target: "libraries", "删除媒体库失败: {}", e); e.to_string() })?;

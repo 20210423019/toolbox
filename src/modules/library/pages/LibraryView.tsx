@@ -303,10 +303,10 @@ export default function LibraryView() {
     if (lib && (lib as any).card_info_fields) {
       try {
         const parsed = JSON.parse((lib as any).card_info_fields);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
-    return storeCardInfoFields.length > 0 ? storeCardInfoFields : ["size", "date", "resolution"];
+    return storeCardInfoFields;
   }, [libraries, currentLibraryId, storeCardInfoFields]);
 
   const currentLibrary = useMemo(() => {

@@ -20,6 +20,8 @@ interface Props {
 }
 
 export default function LibraryList({ libraries, catId, onLibClick }: Props) {
+  const [dragLibId, setDragLibId] = useState<string | null>(null);
+  const [dragOverLibId, setDragOverLibId] = useState<string | null>(null);
   const { border, accent, text, status } = useTheme();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,6 +48,27 @@ export default function LibraryList({ libraries, catId, onLibClick }: Props) {
     const randomIcon = LIB_ICONS[Math.floor(Math.random() * LIB_ICONS.length)];
     const id = await useAppStore.getState().createLibrary(catId, "新视频库", randomIcon);
     if (id) { setEditingId(id); setEditingName("新视频库"); }
+  };
+
+  // ── 拖拽排序 ──
+  const handleLibDragStart = (libId: string) => setDragLibId(libId);
+  const handleLibDragOver = (libId: string) => { if (libId !== dragLibId) setDragOverLibId(libId); };
+  const handleLibDragEnd = () => {
+    if (dragLibId && dragOverLibId && dragLibId !== dragOverLibId) {
+      const sorted = [...libraries];
+      const fromIdx = sorted.findIndex(l => l.id === dragLibId);
+      const toIdx = sorted.findIndex(l => l.id === dragOverLibId);
+      if (fromIdx >= 0 && toIdx >= 0) {
+        const [moved] = sorted.splice(fromIdx, 1);
+        sorted.splice(toIdx, 0, moved);
+        // 批量更新 sort_order
+        sorted.forEach((lib, idx) => {
+          useAppStore.getState().updateLibrarySort(lib.id, idx);
+        });
+      }
+    }
+    setDragLibId(null);
+    setDragOverLibId(null);
   };
 
   return (
@@ -88,6 +111,11 @@ export default function LibraryList({ libraries, catId, onLibClick }: Props) {
 
             return (
               <div key={lib.id} className="vh-lib-card"
+                draggable
+                onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", lib.id); handleLibDragStart(lib.id); }}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; handleLibDragOver(lib.id); }}
+                onDragEnd={handleLibDragEnd}
+                onDrop={(e) => { e.preventDefault(); handleLibDragEnd(); }}
                 style={{
                   display: "flex", alignItems: "stretch",
                   padding: "0 8px 0 0",
@@ -97,7 +125,7 @@ export default function LibraryList({ libraries, catId, onLibClick }: Props) {
                     ? `rgba(30,34,55,0.6)`
                     : `rgba(26,26,36,0.45)`,
                   border: `1px solid ${
-                    isHovered ? `rgba(96,165,250,0.25)` : `rgba(255,255,255,0.04)`
+                    dragOverLibId === lib.id ? accent.primary : (isHovered ? `rgba(96,165,250,0.25)` : `rgba(255,255,255,0.04)`)
                   }`,
                   backdropFilter: "blur(8px)",
                   WebkitBackdropFilter: "blur(8px)",
@@ -106,6 +134,7 @@ export default function LibraryList({ libraries, catId, onLibClick }: Props) {
                   position: "relative",
                   overflow: "hidden",
                   transform: isHovered ? "translateY(-1px)" : "none",
+                  opacity: dragLibId === lib.id ? 0.4 : 1,
                 }}
                 onClick={() => { if (!isEditing) onLibClick(lib); }}
                 onMouseEnter={() => setHoveredId(lib.id)}

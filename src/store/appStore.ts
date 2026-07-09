@@ -140,6 +140,7 @@ interface AppState {
   deleteCategoryAction: (id: string, deleteLibraries: boolean) => Promise<void>;
   updateCategoryStatus: (id: string, status: string) => Promise<void>;
   updateCategorySort: (id: string, sortOrder: number) => Promise<void>;
+  updateLibrarySort: (id: string, sortOrder: number) => Promise<void>;
   updateCategoryIcon: (id: string, icon: string) => Promise<void>;
   createLibrary: (categoryId: string, name: string, icon?: string) => Promise<string | null>;
   renameLibrary: (id: string, name: string, categoryId: string) => Promise<void>;
@@ -303,7 +304,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if ((lib as any)?.card_info_fields) {
           try {
             const parsed = JSON.parse((lib as any).card_info_fields);
-            if (Array.isArray(parsed) && parsed.length > 0) set({ cardInfoFields: parsed });
+            if (Array.isArray(parsed)) set({ cardInfoFields: parsed });
           } catch {}
         }
         if ((lib as any)?.card_tag_ids) {
@@ -556,6 +557,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ categories: get().categories.map(c => c.id === id ? { ...c, sort_order: sortOrder } : c) });
     } catch (e) {
       notify({ type: "error", title: "更新排序失败", message: String(e) });
+    }
+  },
+  updateLibrarySort: async (id, sortOrder) => {
+    try {
+      await invoke("update_library_sort", { id, sortOrder });
+      // 同步更新 libraries 中对应库的 sort_order
+      set((s) => {
+        const libs = { ...s.libraries };
+        for (const catId of Object.keys(libs)) {
+          libs[catId] = libs[catId].map((l: any) => l.id === id ? { ...l, sort_order: sortOrder } : l);
+        }
+        return { libraries: libs };
+      });
+    } catch (e) {
+      notify({ type: "error", title: "更新库排序失败", message: String(e) });
     }
   },
   createLibrary: async (categoryId, name, icon) => {

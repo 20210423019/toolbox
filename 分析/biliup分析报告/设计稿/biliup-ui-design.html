@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BiliUp Console — 可视化操作界面设计稿</title>
+<style>
+  /* ============================================================
+     BiliUp Console Design Prototype
+     Design System: 工业实用风 · 信息密集型 · 深色主题
+     Inspired by: 监控面板 + 专业工具 + B站 视觉元素
+     ============================================================ */
+
+  /* ---------- Design Tokens ---------- */
+  :root {
+    /* 品牌色 — 基于B站粉色延伸 */
+    --pink-500: #fb7299;
+    --pink-400: #fc8bab;
+    --pink-300: #fda4bd;
+    --pink-100: #fce7ef;
+    --pink-50:  #fef1f6;
+    --pink-glow: rgba(251, 114, 153, 0.25);
+
+    /* 中性色 */
+    --gray-950: #0c0c0e;
+    --gray-900: #141416;
+    --gray-850: #1a1a1e;
+    --gray-800: #1f1f24;
+    --gray-750: #27272c;
+    --gray-700: #2e2e35;
+    --gray-600: #3f3f48;
+    --gray-500: #63636e;
+    --gray-400: #8a8a96;
+    --gray-300: #aeaebe;
+    --gray-200: #d4d4df;
+    --gray-100: #ebebf0;
+    --gray-50:  #f5f5f7;
+
+    /* 语义色 */
+    --green-500: #22c55e;
+    --green-400: #4ade80;
+    --green-50:  rgba(34, 197, 94, 0.08);
+    --yellow-500: #eab308;
+    --yellow-50:  rgba(234, 179, 8, 0.08);
+    --red-500: #ef4444;
+    --red-400: #f87171;
+    --red-50:  rgba(239, 68, 68, 0.08);
+    --blue-500: #3b82f6;
+    --blue-400: #60a5fa;
+    --blue-50:  rgba(59, 130, 246, 0.08);
+
+    /* 功能色 */
+    --bg-primary: var(--gray-950);
+    --bg-secondary: var(--gray-900);
+    --bg-tertiary: var(--gray-850);
+    --bg-elevated: var(--gray-800);
+    --bg-hover: var(--gray-750);
+    --bg-active: var(--gray-700);
+
+    --border-primary: var(--gray-700);
+    --border-secondary: var(--gray-600);
+    --border-focus: var(--pink-500);
+
+    --text-primary: var(--gray-100);
+    --text-secondary: var(--gray-300);
+    --text-tertiary: var(--gray-400);
+    --text-muted: var(--gray-500);
+
+    --font-sans: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+    --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 13px;
+    --font-size-lg: 14px;
+    --font-size-xl: 16px;
+    --font-size-2xl: 20px;
+    --font-size-3xl: 24px;
+
+    --radius-xs: 3px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.35);
+    --shadow-lg: 0 4px 24px rgba(0,0,0,0.45);
+    --shadow-glow-pink: 0 0 12px var(--pink-glow);
+
+    --transition-fast: 120ms ease;
+    --transition-normal: 200ms ease;
+  }
+
+  /* ---------- Reset & Base ---------- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: var(--font-size-base); -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Mockup Frame ---------- */
+  .mockup-container {
+    width: 1280px;
+    height: 800px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  }
+
+  /* ---------- Title Bar ---------- */
+  .titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    padding: 0 16px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .titlebar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .titlebar-logo {
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(135deg, var(--pink-500), #c084fc);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .titlebar-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+  }
+  .titlebar-badge {
+    font-size: 10px;
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid var(--border-primary);
+    font-weight: 500;
+  }
+  .titlebar-center {
+    display: flex;
+    gap: 2px;
+  }
+  .titlebar-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gray-600);
+  }
+  .titlebar-dot.active { background: var(--green-500); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+  .titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+  }
+  .titlebar-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .titlebar-status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--green-500);
+  }
+  .titlebar-time { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Main Layout ---------- */
+  .app-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 200px;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-primary);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 8px;
+    gap: 2px;
+  }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 10px 10px 4px;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+  }
+  .sidebar-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .sidebar-item.active {
+    background: var(--pink-50);
+    color: var(--pink-400);
+  }
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 16px;
+    background: var(--pink-500);
+    border-radius: 0 2px 2px 0;
+  }
+  .sidebar-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .sidebar-badge {
+    margin-left: auto;
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    font-size: 10px;
+    padding: 0 5px;
+    border-radius: 8px;
+    min-width: 18px;
+    text-align: center;
+    line-height: 16px;
+  }
+  .sidebar-item.active .sidebar-badge {
+    background: rgba(251, 114, 153, 0.15);
+    color: var(--pink-400);
+  }
+  .sidebar-spacer { flex: 1; }
+  .sidebar-footer {
+    padding: 8px 10px;
+    border-top: 1px solid var(--border-primary);
+    margin-top: 4px;
+  }
+  .sidebar-footer .sidebar-item { padding: 5px 10px; font-size: 11px; color: var(--text-tertiary); }
+
+  /* ---------- Content Area ---------- */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-secondary);
+  }
+
+  /* ---------- Top Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+    gap: 12px;
+  }
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toolbar-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .toolbar-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    padding: 1px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border-primary);
+  }
+
+  /* ---------- Search Bar ---------- */
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 0 10px;
+    height: 30px;
+    width: 240px;
+    transition: all var(--transition-fast);
+  }
+  .search-box:focus-within {
+    border-color: var(--pink-500);
+    box-shadow: 0 0 0 2px var(--pink-glow);
+    background: var(--bg-elevated);
+  }
+  .search-box .search-icon { color: var(--text-tertiary); font-size: 12px; flex-shrink: 0; }
+  .search-box input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-sans);
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  /* ---------- Button System ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    border: none;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--pink-500);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #e8638a; box-shadow: var(--shadow-glow-pink); }
+  .btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+  }
+  .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-secondary); }
+  .btn-ghost {
+    background: none;
+    color: var(--text-tertiary);
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .btn-danger {
+    background: var(--red-50);
+    color: var(--red-400);
+    border: 1px solid rgba(239,68,68,0.15);
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); }
+  .btn-sm { height: 24px; padding: 0 8px; font-size: 11px; }
+  .btn-icon { width: 30px; padding: 0; justify-content: center; }
+  .btn-icon.btn-sm { width: 24px; }
+
+  /* ---------- Tab System ---------- */
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .tabs::-webkit-scrollbar { height: 0; }
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 14px;
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    position: relative;
+  }
+  .tab:hover { color: var(--text-secondary); background: var(--bg-hover); }
+  .tab.active {
+    color: var(--pink-400);
+    border-bottom-color: var(--pink-500);
+  }
+  .tab .tab-badge {
+    font-size: 10px;
+    background: var(--bg-tertiary);
+    padding: 0 5px;
+    border-radius: 8px;
+    line-height: 16px;
+    min-width: 16px;
+    text-align: center;
+  }
+  .tab.active .tab-badge {
+    background: var(--pink-50);
+    color: var(--pink-400);
+  }
+
+  /* ---------- Panel Body ---------- */
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .panel-body::-webkit-scrollbar { width: 6px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 3px; }
+  .panel-body::-webkit-scrollbar-thumb:hover { background: var(--gray-500); }
+
+  /* ---------- Card ---------- */
+  .card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-tertiary);
+  }
+  .card-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-body {
+    padding: 14px;
+  }
+
+  /* ---------- Form Elements ---------- */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label {
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 0.2px;
+  }
+  .form-input, .form-select, .form-textarea {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    height: 30px;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    transition: all var(--transition-fast);
+    outline: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--pink-500);
+    box-shadow: 0 0 0 2px var(--pink-glow);
+  }
+  .form-input::placeholder { color: var(--text-muted); }
+  .form-textarea { height: 72px; padding: 8px 10px; resize: vertical; }
+  .form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238a8a96' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .form-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .form-row .form-input { flex: 1; }
+
+  /* ---------- Checkbox / Toggle ---------- */
+  .toggle-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+  }
+  .toggle-item:hover { background: var(--bg-hover); }
+  .toggle-checkbox {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--gray-500);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .toggle-checkbox:checked {
+    background: var(--pink-500);
+    border-color: var(--pink-500);
+  }
+  .toggle-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: -1px;
+    left: 2px;
+    font-size: 10px;
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* ---------- Upload Queue ---------- */
+  .upload-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .upload-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+  }
+  .upload-item:hover { border-color: var(--border-secondary); }
+  .upload-item-icon {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .upload-item-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .upload-item-name {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .upload-item-meta {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 8px;
+  }
+  .upload-item-status {
+    font-size: 10px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .upload-item-status.done { color: var(--green-400); }
+  .upload-item-status.uploading { color: var(--blue-400); }
+  .upload-item-status.pending { color: var(--text-muted); }
+  .upload-item-status.error { color: var(--red-400); }
+
+  /* ---------- Progress Bar ---------- */
+  .progress-bar {
+    width: 120px;
+    height: 4px;
+    background: var(--bg-primary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .progress-bar-fill.green { background: var(--green-500); }
+  .progress-bar-fill.blue { background: var(--blue-500); }
+
+  /* ---------- Video List (list/show) ---------- */
+  .video-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .video-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+  .video-row:hover { background: var(--bg-hover); }
+  .video-row-thumb {
+    width: 48px;
+    height: 27px;
+    border-radius: var(--radius-xs);
+    background: var(--bg-tertiary);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    overflow: hidden;
+  }
+  .video-row-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .video-row-info { flex: 1; min-width: 0; }
+  .video-row-title {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .video-row-meta {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 8px;
+  }
+  .video-row-stats {
+    display: flex;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .video-row-status {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .video-row-status.pubed { background: var(--green-50); color: var(--green-400); }
+  .video-row-status.pubing { background: var(--yellow-50); color: var(--yellow-500); }
+  .video-row-status.failed { background: var(--red-50); color: var(--red-400); }
+
+  /* ---------- Download Panel ---------- */
+  .download-preview {
+    display: flex;
+    gap: 16px;
+    padding: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    align-items: center;
+  }
+  .download-preview-icon {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .download-preview-info { flex: 1; }
+  .download-preview-title { font-size: var(--font-size-base); font-weight: 500; }
+  .download-preview-meta { font-size: var(--font-size-xs); color: var(--text-tertiary); display: flex; gap: 12px; margin-top: 2px; }
+
+  /* ---------- FLV Dump ---------- */
+  .metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .metadata-item {
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .metadata-key {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .metadata-value {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .metadata-value.codec { font-size: var(--font-size-sm); }
+
+  /* ---------- Log Output ---------- */
+  .log-output {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.7;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text-secondary);
+  }
+  .log-output::-webkit-scrollbar { width: 4px; }
+  .log-output::-webkit-scrollbar-thumb { background: var(--gray-600); border-radius: 2px; }
+  .log-line { display: flex; gap: 8px; }
+  .log-time { color: var(--text-muted); flex-shrink: 0; }
+  .log-level { flex-shrink: 0; width: 40px; font-weight: 600; }
+  .log-level.info { color: var(--blue-400); }
+  .log-level.ok { color: var(--green-400); }
+  .log-level.warn { color: var(--yellow-500); }
+  .log-level.err { color: var(--red-400); }
+  .log-msg { flex: 1; }
+
+  /* ---------- Status Bar ---------- */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 28px;
+    padding: 0 14px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-primary);
+    flex-shrink: 0;
+  }
+  .statusbar-left, .statusbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+  .statusbar-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ---------- Empty State ---------- */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    text-align: center;
+    gap: 8px;
+  }
+  .empty-state-icon {
+    font-size: 36px;
+    opacity: 0.3;
+    margin-bottom: 4px;
+  }
+  .empty-state-title {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .empty-state-desc {
+    font-size: var(--font-size-sm);
+    color: var(--text-tertiary);
+    max-width: 320px;
+  }
+
+  /* ---------- Animated transitions ---------- */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .panel-body > * { animation: fadeIn 0.3s ease both; }
+  .panel-body > *:nth-child(2) { animation-delay: 0.04s; }
+  .panel-body > *:nth-child(3) { animation-delay: 0.08s; }
+  .panel-body > *:nth-child(4) { animation-delay: 0.12s; }
+
+  /* ---------- Page switcher ---------- */
+  .page { display: none; }
+  .page.active { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ---------- Multi-select pills (tag style) ---------- */
+  .pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+  .pill:hover { border-color: var(--border-secondary); color: var(--text-secondary); }
+  .pill.active { background: var(--pink-50); border-color: var(--pink-500); color: var(--pink-400); }
+
+  /* ---------- File drop zone ---------- */
+  .dropzone {
+    border: 1.5px dashed var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: var(--bg-tertiary);
+  }
+  .dropzone:hover { border-color: var(--pink-500); background: var(--pink-50); }
+  .dropzone-icon { font-size: 24px; margin-bottom: 4px; opacity: 0.4; }
+  .dropzone-text { font-size: var(--font-size-sm); color: var(--text-tertiary); }
+  .dropzone-hint { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ---------- Responsive adjustments ---------- */
+  .flex-row { display: flex; gap: 12px; }
+  .flex-1 { flex: 1; }
+  .flex-col { display: flex; flex-direction: column; gap: 12px; }
+  .gap-8 { gap: 8px; }
+  .mt-8 { margin-top: 8px; }
+  .mb-8 { margin-bottom: 8px; }
+  .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .text-muted { color: var(--text-muted); }
+  .text-xs { font-size: var(--font-size-xs); }
+  .text-sm { font-size: var(--font-size-sm); }
+
+  /* ---------- Label tag in list ---------- */
+  .tag-label {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .tag-label.green { background: var(--green-50); color: var(--green-400); }
+  .tag-label.blue { background: var(--blue-50); color: var(--blue-400); }
+  .tag-label.yellow { background: var(--yellow-50); color: var(--yellow-500); }
+</style>
+</head>
+<body>
+
+<!-- ==================== Mockup Container ==================== -->
+<div class="mockup-container">
+
+  <!-- Title Bar -->
+  <header class="titlebar">
+    <div class="titlebar-left">
+      <div class="titlebar-logo">B</div>
+      <span class="titlebar-title">BiliUp Console</span>
+      <span class="titlebar-badge">v0.2.4</span>
+    </div>
+    <div class="titlebar-center">
+      <span class="titlebar-dot active"></span>
+      <span class="titlebar-dot"></span>
+      <span class="titlebar-dot"></span>
+    </div>
+    <div class="titlebar-right">
+      <span class="titlebar-status"><span class="titlebar-status-dot"></span> 在线</span>
+      <span class="titlebar-time" id="clock">21:30:00</span>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="app-layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section-label">功能导航</div>
+
+      <div class="sidebar-item active" data-page="upload" onclick="switchPage('upload')">
+        <span class="sidebar-icon">↑</span>
+        上传视频
+        <span class="sidebar-badge">3</span>
+      </div>
+      <div class="sidebar-item" data-page="append" onclick="switchPage('append')">
+        <span class="sidebar-icon">+</span>
+        追加稿件
+      </div>
+      <div class="sidebar-item" data-page="list" onclick="switchPage('list')">
+        <span class="sidebar-icon">☰</span>
+        稿件列表
+      </div>
+      <div class="sidebar-item" data-page="show" onclick="switchPage('show')">
+        <span class="sidebar-icon">◎</span>
+        查看详情
+      </div>
+
+      <div class="sidebar-section-label">工具</div>
+
+      <div class="sidebar-item" data-page="login" onclick="switchPage('login')">
+        <span class="sidebar-icon">🔑</span>
+        登录管理
+      </div>
+      <div class="sidebar-item" data-page="download" onclick="switchPage('download')">
+        <span class="sidebar-icon">↓</span>
+        下载工具
+      </div>
+      <div class="sidebar-item" data-page="flv" onclick="switchPage('flv')">
+        <span class="sidebar-icon">📋</span>
+        FLV 分析
+      </div>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-item" onclick="switchPage('settings')">
+          <span class="sidebar-icon">⚙</span>
+          设置
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="content">
+
+      <!-- ==================== UPLOAD PAGE ==================== -->
+      <div id="page-upload" class="page active">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">上传视频</span>
+            <span class="toolbar-count">队列中 3 个文件</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-ghost btn-sm">清空队列</button>
+            <button class="btn btn-primary">开始上传</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">投稿参数</div>
+          <div class="tab">上传队列</div>
+          <div class="tab">传输选项</div>
+          <div class="tab">音质版权</div>
+        </div>
+
+        <div class="panel-body">
+
+          <!-- Drop Zone -->
+          <div class="dropzone" onclick="this.querySelector('input').click()">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">拖拽视频文件到此处，或点击选择文件</div>
+            <div class="dropzone-hint">支持 MP4, FLV, MKV, AVI — 单文件最大 8GB</div>
+            <input type="file" multiple accept="video/*" style="display:none">
+          </div>
+
+          <!-- Upload Queue Preview -->
+          <div class="upload-queue">
+            <div class="upload-item">
+              <div class="upload-item-icon">🎬</div>
+              <div class="upload-item-info">
+                <div class="upload-item-name">EP01_开场.mp4</div>
+                <div class="upload-item-meta">234.5 MB · 1920×1080 · 25:30</div>
+              </div>
+              <div class="progress-bar"><div class="progress-bar-fill blue" style="width:100%"></div></div>
+              <span class="upload-item-status done">✓ 已完成</span>
+            </div>
+            <div class="upload-item">
+              <div class="upload-item-icon">🎬</div>
+              <div class="upload-item-info">
+                <div class="upload-item-name">EP02_开发过程.mp4</div>
+                <div class="upload-item-meta">312.8 MB · 1920×1080 · 34:12</div>
+              </div>
+              <div class="progress-bar"><div class="progress-bar-fill blue" style="width:67%"></div></div>
+              <span class="upload-item-status uploading">⟳ 67%</span>
+            </div>
+            <div class="upload-item">
+              <div class="upload-item-icon">🎬</div>
+              <div class="upload-item-info">
+                <div class="upload-item-name">EP03_总结与回顾.mp4</div>
+                <div class="upload-item-meta">189.2 MB · 1920×1080 · 20:05</div>
+              </div>
+              <div class="progress-bar"><div class="progress-bar-fill" style="width:0%"></div></div>
+              <span class="upload-item-status pending">等待中</span>
+            </div>
+          </div>
+
+          <!-- Form: 投稿参数 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📝 投稿信息</span>
+              <span class="text-xs text-muted">支持 TOML 配置文件导入</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label class="form-label">视频标题</label>
+                  <input class="form-input" placeholder="输入视频标题..." value="【合集】Rust 入门到精通 EP01-03">
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">视频简介</label>
+                  <textarea class="form-textarea" placeholder="输入视频简介...">本合集记录了从零开始学习 Rust 语言的全过程，包含基础语法、所有权系统、并发编程等核心知识点。</textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">投稿分区 (tid)</label>
+                  <select class="form-select">
+                    <option>171 — 直播</option>
+                    <option selected>188 — 科技</option>
+                    <option>181 — 知识</option>
+                    <option>229 — 音乐</option>
+                    <option>4 — 游戏</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">视频标签</label>
+                  <input class="form-input" placeholder="逗号分隔" value="Rust,编程,教程,合集">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">封面图片</label>
+                  <div class="form-row">
+                    <input class="form-input" placeholder="选择封面文件..." value="cover_ep01.jpg">
+                    <button class="btn btn-secondary btn-sm">选择</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">定时发布</label>
+                  <input class="form-input" type="datetime-local" value="2026-07-06T10:00">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">空间动态</label>
+                  <input class="form-input" placeholder="发布时同步的动态文字..." value="新视频已发布，欢迎观看！">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">创作任务 ID</label>
+                  <input class="form-input" placeholder="可选">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">投稿接口</label>
+                  <select class="form-select">
+                    <option selected>client — 客户端接口</option>
+                    <option>app — App 接口</option>
+                    <option>web — Web 接口</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">转载来源</label>
+                  <input class="form-input" placeholder="如为转载请输入来源 URL">
+                </div>
+              </div>
+
+              <!-- 版权与权限 -->
+              <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border-primary);">
+                <div class="form-label" style="margin-bottom:6px;">版权与权限</div>
+                <div class="toggle-group">
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox" checked> 自制
+                  </label>
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox"> 转载
+                  </label>
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox"> 杜比音效
+                  </label>
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox"> Hi-Res
+                  </label>
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox"> 禁止转载
+                  </label>
+                  <label class="toggle-item">
+                    <input type="checkbox" class="toggle-checkbox"> 开启充电
+                  </label>
+                </div>
+                <div style="margin-top:8px;">
+                  <div class="toggle-group">
+                    <label class="toggle-item">
+                      <input type="checkbox" class="toggle-checkbox"> 精选评论
+                    </label>
+                    <label class="toggle-item">
+                      <input type="checkbox" class="toggle-checkbox"> 关闭评论
+                    </label>
+                    <label class="toggle-item">
+                      <input type="checkbox" class="toggle-checkbox"> 关闭弹幕
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 传输选项 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⚡ 传输选项</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">上传线路</label>
+                  <select class="form-select">
+                    <option>自动探测 (推荐)</option>
+                    <option>bda2 — 百度加速2</option>
+                    <option>ws — 网宿 CDN</option>
+                    <option>qn — 七牛云</option>
+                    <option>tx — 腾讯云</option>
+                    <option>txa — 腾讯云加速</option>
+                    <option>bda — 百度加速</option>
+                    <option>alia — 阿里云加速</option>
+                    <option>bldsa — 百度 BLDSA</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">并发分片数</label>
+                  <input class="form-input" type="number" value="3" min="1" max="10">
+                  <span class="form-hint">建议值：3-5，根据带宽调整</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">代理设置</label>
+                  <input class="form-input" placeholder="留空不使用代理" value="http://127.0.0.1:7890">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Cookie 文件</label>
+                  <input class="form-input" value="cookies.json">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn btn-secondary">重置参数</button>
+            <button class="btn btn-ghost">导入配置</button>
+            <button class="btn btn-primary" onclick="simulateProgress()">开始上传</button>
+          </div>
+
+          <!-- Log Output -->
+          <div class="log-output">
+            <div class="log-line"><span class="log-time">21:30:01</span><span class="log-level ok"> OK </span><span class="log-msg">登录验证成功 — cookies.json</span></div>
+            <div class="log-line"><span class="log-time">21:30:02</span><span class="log-level info">INFO</span><span class="log-msg">上传线路探测: bda2 可用 (延迟 32ms)</span></div>
+            <div class="log-line"><span class="log-time">21:30:03</span><span class="log-level ok"> OK </span><span class="log-msg">封面上传成功 → https://i0.hdslb.com/bfs/archive/xxx.jpg</span></div>
+            <div class="log-line"><span class="log-time">21:30:05</span><span class="log-level info">INFO</span><span class="log-msg">EP01_开场.mp4 开始上传 (3 并发分片)</span></div>
+            <div class="log-line"><span class="log-time">21:30:08</span><span class="log-level ok"> OK </span><span class="log-msg">EP01_开场.mp4 上传完成 (25.3s)</span></div>
+            <div class="log-line"><span class="log-time">21:30:10</span><span class="log-level info">INFO</span><span class="log-msg">稿件提交中...</span></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== APPEND PAGE ==================== -->
+      <div id="page-append" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">追加视频分P</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary">追加到稿件</button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🎯 目标稿件</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">稿件 ID (av/bv 号)</label>
+                  <input class="form-input" placeholder="例如 BV1GJ411x7xY" value="BV1GJ411x7xY">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">当前标题</label>
+                  <input class="form-input" value="【合集】Rust 入门到精通 EP01-03" disabled style="opacity:0.5">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📁 追加文件</span>
+              <button class="btn btn-ghost btn-sm">+ 添加文件</button>
+            </div>
+            <div class="card-body">
+              <div class="upload-queue">
+                <div class="upload-item">
+                  <div class="upload-item-icon">🎬</div>
+                  <div class="upload-item-info">
+                    <div class="upload-item-name">EP04_高级特性.mp4</div>
+                    <div class="upload-item-meta">256.3 MB · 1920×1080 · 28:45</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm">✕</button>
+                </div>
+                <div class="upload-item">
+                  <div class="upload-item-icon">🎬</div>
+                  <div class="upload-item-info">
+                    <div class="upload-item-name">EP05_项目实战.mp4</div>
+                    <div class="upload-item-meta">410.7 MB · 1920×1080 · 45:20</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm">✕</button>
+                </div>
+              </div>
+              <div class="dropzone" style="margin-top:8px; padding:16px;">
+                <div class="dropzone-text text-xs">拖拽文件到此处追加</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== LIST PAGE ==================== -->
+      <div id="page-list" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">稿件列表</span>
+            <span class="toolbar-count">共 24 个</span>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input placeholder="搜索稿件...">
+            </div>
+            <button class="btn btn-secondary btn-sm">筛选</button>
+            <button class="btn btn-secondary btn-sm">刷新</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">全部 <span class="tab-badge">24</span></div>
+          <div class="tab">已通过 <span class="tab-badge">18</span></div>
+          <div class="tab">审核中 <span class="tab-badge">4</span></div>
+          <div class="tab">未通过 <span class="tab-badge">2</span></div>
+        </div>
+
+        <div class="panel-body">
+          <div class="video-list">
+            <div class="video-row">
+              <div class="video-row-thumb"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 27'%3E%3Crect width='48' height='27' fill='%232e2e35'/%3E%3Ctext x='24' y='16' text-anchor='middle' fill='%238a8a96' font-size='8'%3E封面%3C/text%3E%3C/svg%3E" alt="thumb"></div>
+              <div class="video-row-info">
+                <div class="video-row-title">【Rust】所有权系统深度解析</div>
+                <div class="video-row-meta">BV1xx · 2026-07-04 · 科技 · 25:30</div>
+              </div>
+              <div class="video-row-stats">
+                <span>👁 1.2w</span>
+                <span>👍 856</span>
+                <span>💬 124</span>
+              </div>
+              <span class="video-row-status pubed">已通过</span>
+            </div>
+            <div class="video-row">
+              <div class="video-row-thumb"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 27'%3E%3Crect width='48' height='27' fill='%232e2e35'/%3E%3Ctext x='24' y='16' text-anchor='middle' fill='%238a8a96' font-size='8'%3E封面%3C/text%3E%3C/svg%3E" alt="thumb"></div>
+              <div class="video-row-info">
+                <div class="video-row-title">【Rust】并发编程实战 — 从入门到进阶</div>
+                <div class="video-row-meta">BV2xx · 2026-07-05 · 科技 · 34:12</div>
+              </div>
+              <div class="video-row-stats">
+                <span>👁 3.4k</span>
+                <span>👍 234</span>
+                <span>💬 56</span>
+              </div>
+              <span class="video-row-status pubing">审核中</span>
+            </div>
+            <div class="video-row">
+              <div class="video-row-thumb"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 27'%3E%3Crect width='48' height='27' fill='%232e2e35'/%3E%3Ctext x='24' y='16' text-anchor='middle' fill='%238a8a96' font-size='8'%3E封面%3C/text%3E%3C/svg%3E" alt="thumb"></div>
+              <div class="video-row-info">
+                <div class="video-row-title">【Rust】宏编程入门指南</div>
+                <div class="video-row-meta">BV3xx · 2026-07-03 · 科技 · 18:50</div>
+              </div>
+              <div class="video-row-stats">
+                <span>👁 892</span>
+                <span>👍 67</span>
+                <span>💬 12</span>
+              </div>
+              <span class="video-row-status failed">未通过</span>
+            </div>
+            <div class="video-row">
+              <div class="video-row-thumb"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 27'%3E%3Crect width='48' height='27' fill='%232e2e35'/%3E%3Ctext x='24' y='16' text-anchor='middle' fill='%238a8a96' font-size='8'%3E封面%3C/text%3E%3C/svg%3E" alt="thumb"></div>
+              <div class="video-row-info">
+                <div class="video-row-title">【Rust】WebAssembly 实战</div>
+                <div class="video-row-meta">BV4xx · 2026-07-02 · 科技 · 42:08</div>
+              </div>
+              <div class="video-row-stats">
+                <span>👁 5.6k</span>
+                <span>👍 432</span>
+                <span>💬 89</span>
+              </div>
+              <span class="video-row-status pubed">已通过</span>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+            <span class="text-xs text-muted">第 1-4 条，共 24 条</span>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-ghost btn-sm" disabled>‹</button>
+              <button class="btn btn-secondary btn-sm">1</button>
+              <button class="btn btn-ghost btn-sm">2</button>
+              <button class="btn btn-ghost btn-sm">3</button>
+              <button class="btn btn-ghost btn-sm">⋯</button>
+              <button class="btn btn-ghost btn-sm">6</button>
+              <button class="btn btn-ghost btn-sm">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SHOW PAGE ==================== -->
+      <div id="page-show" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">稿件详情</span>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-box" style="width:200px;">
+              <span class="search-icon">🔍</span>
+              <input placeholder="输入 av/bv 号..." value="BV1GJ411x7xY">
+            </div>
+            <button class="btn btn-primary btn-sm">查询</button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="flex-row">
+            <!-- 左侧预览 -->
+            <div style="width:260px; flex-shrink:0;">
+              <div style="aspect-ratio:16/9; background:var(--bg-tertiary); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; border:1px solid var(--border-primary);">
+                <span style="color:var(--text-muted); font-size:12px;">📺 封面预览</span>
+              </div>
+              <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
+                <button class="btn btn-secondary btn-sm">打开链接</button>
+                <button class="btn btn-secondary btn-sm">复制 BV 号</button>
+              </div>
+            </div>
+
+            <!-- 右侧详情 -->
+            <div class="flex-1 flex-col">
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">📄 基本信息</span>
+                  <span class="tag-label green">已通过</span>
+                </div>
+                <div class="card-body">
+                  <div style="display:grid; grid-template-columns:80px 1fr; gap:4px 12px; font-size:var(--font-size-sm);">
+                    <span class="text-muted">标题</span>
+                    <span>【合集】Rust 入门到精通 EP01-03</span>
+                    <span class="text-muted">BV 号</span>
+                    <span style="font-family:var(--font-mono)">BV1GJ411x7xY</span>
+                    <span class="text-muted">av 号</span>
+                    <span style="font-family:var(--font-mono)">av12345678</span>
+                    <span class="text-muted">分区</span>
+                    <span>188 — 科技</span>
+                    <span class="text-muted">发布时间</span>
+                    <span>2026-07-05 10:00:00</span>
+                    <span class="text-muted">总时长</span>
+                    <span>01:20:05</span>
+                    <span class="text-muted">分P</span>
+                    <span>3 个分P</span>
+                    <span class="text-muted">简介</span>
+                    <span style="color:var(--text-secondary)">本合集记录了从零开始学习 Rust 语言的全过程...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">📊 统计数据</span>
+                </div>
+                <div class="card-body">
+                  <div class="metadata-grid">
+                    <div class="metadata-item"><span class="metadata-key">播放</span><span class="metadata-value">1.2w</span></div>
+                    <div class="metadata-item"><span class="metadata-key">弹幕</span><span class="metadata-value">234</span></div>
+                    <div class="metadata-item"><span class="metadata-key">评论</span><span class="metadata-value">124</span></div>
+                    <div class="metadata-item"><span class="metadata-key">收藏</span><span class="metadata-value">856</span></div>
+                    <div class="metadata-item"><span class="metadata-key">硬币</span><span class="metadata-value">432</span></div>
+                    <div class="metadata-item"><span class="metadata-key">分享</span><span class="metadata-value">167</span></div>
+                    <div class="metadata-item"><span class="metadata-key">点赞</span><span class="metadata-value">2.3k</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">📑 分P列表</span>
+                </div>
+                <div class="card-body">
+                  <div class="video-list">
+                    <div class="video-row" style="padding:6px 8px;">
+                      <span style="width:24px; font-size:10px; color:var(--text-muted);">P1</span>
+                      <div class="video-row-info">
+                        <div class="video-row-title" style="font-size:12px;">EP01_开场.mp4</div>
+                      </div>
+                      <span class="text-xs text-muted">25:30</span>
+                    </div>
+                    <div class="video-row" style="padding:6px 8px;">
+                      <span style="width:24px; font-size:10px; color:var(--text-muted);">P2</span>
+                      <div class="video-row-info">
+                        <div class="video-row-title" style="font-size:12px;">EP02_开发过程.mp4</div>
+                      </div>
+                      <span class="text-xs text-muted">34:12</span>
+                    </div>
+                    <div class="video-row" style="padding:6px 8px;">
+                      <span style="width:24px; font-size:10px; color:var(--text-muted);">P3</span>
+                      <div class="video-row-info">
+                        <div class="video-row-title" style="font-size:12px;">EP03_总结与回顾.mp4</div>
+                      </div>
+                      <span class="text-xs text-muted">20:05</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== LOGIN PAGE ==================== -->
+      <div id="page-login" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">登录管理</span>
+            <span class="toolbar-count">✅ 已登录</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-secondary btn-sm">刷新凭证</button>
+            <button class="btn btn-danger btn-sm">退出登录</button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div style="display:grid; grid-template-columns:320px 1fr; gap:16px;">
+            <!-- 左侧：登录方式 -->
+            <div class="card">
+              <div class="card-header"><span class="card-title">🔑 登录方式</span></div>
+              <div class="card-body" style="display:flex; flex-direction:column; gap:6px;">
+                <button class="btn btn-primary" style="justify-content:center;">📱 扫码登录</button>
+                <button class="btn btn-secondary" style="justify-content:center;">🌐 浏览器登录</button>
+                <button class="btn btn-secondary" style="justify-content:center;">📧 短信验证码</button>
+                <button class="btn btn-secondary" style="justify-content:center;">🔐 账号密码</button>
+                <button class="btn btn-secondary" style="justify-content:center;">🍪 手动输入 Cookie</button>
+              </div>
+            </div>
+
+            <!-- 右侧：当前状态 -->
+            <div class="flex-col">
+              <div class="card">
+                <div class="card-header"><span class="card-title">👤 当前会话</span></div>
+                <div class="card-body">
+                  <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:50%; background:var(--bg-tertiary); display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>
+                    <div>
+                      <div style="font-weight:600;">B站用户名</div>
+                      <div class="text-xs text-muted">UID: 12345678</div>
+                      <div class="text-xs text-muted">Cookie 有效期: 26 天</div>
+                    </div>
+                    <span class="tag-label green" style="margin-left:auto;">已验证</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header"><span class="card-title">📄 Cookie 文件</span></div>
+                <div class="card-body">
+                  <div class="form-row">
+                    <input class="form-input" value="cookies.json" disabled>
+                    <button class="btn btn-secondary btn-sm">查看</button>
+                    <button class="btn btn-secondary btn-sm">导出</button>
+                  </div>
+                  <div class="form-hint" style="margin-top:4px;">最后更新: 2026-07-05 21:28:30</div>
+                </div>
+              </div>
+
+              <div class="log-output" style="max-height:120px;">
+                <div class="log-line"><span class="log-time">21:28:30</span><span class="log-level ok"> OK </span><span class="log-msg">登录验证成功 — cookies.json</span></div>
+                <div class="log-line"><span class="log-time">21:28:30</span><span class="log-level info">INFO</span><span class="log-msg">Token 有效期: 26 天 14 小时</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== DOWNLOAD PAGE ==================== -->
+      <div id="page-download" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">下载工具</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-primary">开始下载</button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="card">
+            <div class="card-header"><span class="card-title">🌐 下载链接</span></div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label class="form-label">视频/直播 URL</label>
+                  <div class="form-row">
+                    <input class="form-input" placeholder="输入 B站 或直播平台链接..." value="https://live.bilibili.com/12345">
+                    <button class="btn btn-secondary btn-sm">检测</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">输出路径模板</label>
+                  <div class="form-row">
+                    <input class="form-input" value="./downloads/%Y-%m-%d/{title}">
+                    <button class="btn btn-secondary btn-sm">选择</button>
+                  </div>
+                  <span class="form-hint">支持 {title} %Y %m %d %H %M %S 占位符</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">文件分割</label>
+                  <select class="form-select">
+                    <option selected>不分片</option>
+                    <option>按大小分割</option>
+                    <option>按时长分割</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">分割参数</label>
+                  <input class="form-input" placeholder="如: 500M 或 30min">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="download-preview">
+            <div class="download-preview-icon">🔴</div>
+            <div class="download-preview-info">
+              <div class="download-preview-title">B站 直播 — 直播间 12345</div>
+              <div class="download-preview-meta">
+                <span>平台: Bilibili</span>
+                <span>状态: 🟢 直播中</span>
+                <span>类型: FLV 流</span>
+              </div>
+            </div>
+            <div class="pill active">在线</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">⬇️ 下载队列</span></div>
+            <div class="card-body">
+              <div class="upload-queue">
+                <div class="upload-item">
+                  <div class="upload-item-icon">🔴</div>
+                  <div class="upload-item-info">
+                    <div class="upload-item-name">直播_2026-07-05T21_30_00</div>
+                    <div class="upload-item-meta">流式下载中 · FLV · 已下载 342.5 MB</div>
+                  </div>
+                  <div class="progress-bar"><div class="progress-bar-fill blue" style="width:45%"></div></div>
+                  <span class="upload-item-status uploading">⟳ 下载中</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== FLV PAGE ==================== -->
+      <div id="page-flv" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">FLV 元数据分析</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn btn-secondary btn-sm">选择文件</button>
+            <button class="btn btn-primary btn-sm">分析</button>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="card">
+            <div class="card-header"><span class="card-title">📂 文件选择</span></div>
+            <div class="card-body">
+              <div class="form-row">
+                <input class="form-input" value="recording_2026-07-05.flv" placeholder="选择 FLV 文件...">
+                <button class="btn btn-secondary btn-sm">浏览</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">📊 元数据</span></div>
+            <div class="card-body">
+              <div class="metadata-grid">
+                <div class="metadata-item"><span class="metadata-key">时长</span><span class="metadata-value">01:25:30</span></div>
+                <div class="metadata-item"><span class="metadata-key">分辨率</span><span class="metadata-value">1920×1080</span></div>
+                <div class="metadata-item"><span class="metadata-key">帧率</span><span class="metadata-value">30.00 fps</span></div>
+                <div class="metadata-item"><span class="metadata-key">视频编码</span><span class="metadata-value codec">AVC (H.264)</span></div>
+                <div class="metadata-item"><span class="metadata-key">视频码率</span><span class="metadata-value">6000 kbps</span></div>
+                <div class="metadata-item"><span class="metadata-key">音频编码</span><span class="metadata-value codec">AAC</span></div>
+                <div class="metadata-item"><span class="metadata-key">音频采样率</span><span class="metadata-value">44100 Hz</span></div>
+                <div class="metadata-item"><span class="metadata-key">立体声</span><span class="metadata-value">是</span></div>
+                <div class="metadata-item"><span class="metadata-key">音频位深</span><span class="metadata-value">16 bit</span></div>
+                <div class="metadata-item"><span class="metadata-key">关键帧</span><span class="metadata-value">128 个</span></div>
+                <div class="metadata-item"><span class="metadata-key">视频 Tag</span><span class="metadata-value">52,340</span></div>
+                <div class="metadata-item"><span class="metadata-key">音频 Tag</span><span class="metadata-value">49,872</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">📜 原始 JSON 输出</span></div>
+            <div class="card-body" style="padding:0;">
+              <div class="log-output" style="max-height:200px; border:none; border-radius:0;">
+                <div style="color:var(--text-muted);">{</div>
+                <div>&nbsp;&nbsp;"header": {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"version": 1,</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"has_video": true,</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"has_audio": true</div>
+                <div>&nbsp;&nbsp;},</div>
+                <div>&nbsp;&nbsp;"metadata": {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"duration": 5130.5,</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"width": 1920,</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"height": 1080,</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;"videocodecid": 7</div>
+                <div>&nbsp;&nbsp;}</div>
+                <div style="color:var(--text-muted);">}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SETTINGS PAGE ==================== -->
+      <div id="page-settings" class="page">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-title">设置</span>
+          </div>
+        </div>
+
+        <div class="panel-body">
+          <div class="card">
+            <div class="card-header"><span class="card-title">⚙ 全局设置</span></div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">默认上传线路</label>
+                  <select class="form-select"><option>自动探测</option></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">默认并发数</label>
+                  <input class="form-input" type="number" value="3">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">默认投稿分区</label>
+                  <select class="form-select"><option>171 — 直播</option></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">默认提交接口</label>
+                  <select class="form-select"><option>client</option></select>
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">Cookie 文件路径</label>
+                  <input class="form-input" value="cookies.json">
+                </div>
+                <div class="form-group full">
+                  <label class="form-label">代理设置</label>
+                  <input class="form-input" placeholder="留空不使用代理">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">🔔 通知</span></div>
+            <div class="card-body">
+              <div class="toggle-group">
+                <label class="toggle-item"><input type="checkbox" class="toggle-checkbox" checked> 上传完成后通知</label>
+                <label class="toggle-item"><input type="checkbox" class="toggle-checkbox"> 下载完成后通知</label>
+                <label class="toggle-item"><input type="checkbox" class="toggle-checkbox" checked> 登录过期提醒</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Status Bar -->
+  <footer class="statusbar">
+    <div class="statusbar-left">
+      <span class="statusbar-item">● biliup-cli v0.2.4</span>
+      <span class="statusbar-item">🍪 已登录</span>
+      <span class="statusbar-item">⬆ 上传: 2 进行中</span>
+    </div>
+    <div class="statusbar-right">
+      <span class="statusbar-item">⚡ 线路: bda2 (32ms)</span>
+      <span class="statusbar-item">📦 队列: 3</span>
+    </div>
+  </footer>
+
+</div>
+
+<!-- ==================== JavaScript ==================== -->
+<script>
+  // 页面切换
+  function switchPage(pageId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-' + pageId).classList.add('active');
+    document.querySelector(`.sidebar-item[data-page="${pageId}"]`).classList.add('active');
+  }
+
+  // 时钟
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toTimeString().slice(0, 8);
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // 模拟上传进度动画
+  function simulateProgress() {
+    const bars = document.querySelectorAll('#page-upload .progress-bar-fill');
+    const statuses = document.querySelectorAll('#page-upload .upload-item-status');
+    if (bars.length < 3) return;
+
+    // 把 pending 状态改为 uploading
+    statuses[2].className = 'upload-item-status uploading';
+    statuses[2].textContent = '⟳ 0%';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 8;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        statuses[2].className = 'upload-item-status done';
+        statuses[2].textContent = '✓ 已完成';
+        bars[2].className = 'progress-bar-fill blue';
+      }
+      bars[2].style.width = Math.min(progress, 100) + '%';
+      statuses[2].textContent = `⟳ ${Math.floor(Math.min(progress, 100))}%`;
+    }, 300);
+  }
+
+  // 键盘快捷键：Ctrl+数字切换页面
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+      const pages = ['upload', 'append', 'list', 'show', 'login', 'download', 'flv', '', 'settings'];
+      const idx = parseInt(e.key) - 1;
+      if (pages[idx]) switchPage(pages[idx]);
+    }
+  });
+</script>
+
+</body>
+</html>
