@@ -36,6 +36,7 @@ interface TabState {
   formatFilters?: string[];
   
   pageState?: Record<string, any>;
+  pageCurrentVideo?: Video;  // 跨库 tab 切换时保留视频引用
 }
 
 interface AppState {
@@ -450,9 +451,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       s.pushSubPage(s.activeTabId, { pageId: "detail", tabId: videoTabId, label: video.filename });
     }
     const videoTabId = `detail-${video.id}`;
+    const tabState: TabState = { scrollPos: 0, filters: {}, viewMode: "card", page: 1, pageCurrentVideo: video };
     const existingIndex = s.tabs.findIndex((t) => t.id === videoTabId);
     if (existingIndex >= 0) {
-      set({ activeTabId: videoTabId, currentPage: "detail", currentVideo: video, currentModuleId: "video" });
+      set({ activeTabId: videoTabId, currentPage: "detail", currentVideo: video, currentModuleId: "video",
+        tabStates: { ...s.tabStates, [videoTabId]: tabState } });
     } else {
       const newTab = { id: videoTabId, label: video.filename, pageId: "detail" };
       set({
@@ -461,6 +464,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentPage: "detail",
         currentVideo: video,
         currentModuleId: "video",
+        tabStates: { ...s.tabStates, [videoTabId]: tabState },
       });
     }
   },
@@ -1122,6 +1126,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         const prevTab = s.tabs.find((t) => t.id === s.activeTabId);
         if (prevTab) {
           const state = s.tabStates[s.activeTabId] || { scrollPos: 0, filters: {}, viewMode: "card", page: 1 };
+          if (prevTab.pageId === "detail" || s.activeTabId.startsWith("detail-")) {
+            state.pageCurrentVideo = s.currentVideo || state.pageCurrentVideo;
+          }
           set({ tabStates: { ...s.tabStates, [s.activeTabId]: state } });
         }
       }
@@ -1132,6 +1139,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const prevTab = s.tabs.find((t) => t.id === s.activeTabId);
       if (prevTab) {
         const state = s.tabStates[s.activeTabId] || { scrollPos: 0, filters: {}, viewMode: "card", page: 1 };
+        // 记录当前视频引用（跨库 tab 切换后恢复用）
+        if (prevTab.pageId === "detail" || s.activeTabId.startsWith("detail-")) {
+          state.pageCurrentVideo = s.currentVideo || state.pageCurrentVideo;
+        }
         set({ tabStates: { ...s.tabStates, [s.activeTabId]: state } });
       }
     }
@@ -1149,7 +1160,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         extra.currentModuleId = "video";
         if (id.startsWith("detail-")) {
           const videoId = id.slice("detail-".length);
-          const v = s.videos.find(v => v.id === videoId);
+          // 先从当前库视频列表查找，找不到则从 tabStates 恢复（跨库 tab 切换时）
+          const v = s.videos.find(v => v.id === videoId) || s.tabStates[id]?.pageCurrentVideo;
           if (v) extra.currentVideo = v;
         }
       }
