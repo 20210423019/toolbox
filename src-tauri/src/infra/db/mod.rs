@@ -277,6 +277,22 @@ impl DbPool {
         let _ = conn.execute_batch("DROP INDEX IF EXISTS idx_videos_status");
         // idx_videos_status(status) 选择性过低，单列索引收益极低
 
+        // 数据库迁移：为标签表添加 category_id 列（跨库标签共享），幂等处理
+        for (tbl, join_sql) in &[
+            ("tag_classes", "SELECT category_id FROM libraries WHERE id = tag_classes.library_id"),
+            ("class_tags", "SELECT l.category_id FROM libraries l INNER JOIN tag_classes tc ON tc.id = class_tags.class_id WHERE tc.library_id = l.id"),
+        ] {
+            let _ = conn.execute_batch(&format!("ALTER TABLE {} ADD COLUMN category_id TEXT DEFAULT ''", tbl));
+            let _ = conn.execute_batch(&format!("UPDATE {} SET category_id = ({}) WHERE category_id IS NULL OR category_id = ''", tbl, join_sql));
+        }
+        // 为 category_id 建索引（幂等）
+        for idx in &[
+            "CREATE INDEX IF NOT EXISTS idx_tag_classes_category ON tag_classes(category_id)",
+            "CREATE INDEX IF NOT EXISTS idx_class_tags_category ON class_tags(category_id)",
+        ] {
+            let _ = conn.execute_batch(idx);
+        }
+
         // 初始默认设置（仅在空表时填充）
         if conn.query_row::<i64, _, _>("SELECT COUNT(*) FROM app_settings", [], |r| r.get(0)).unwrap_or(0) == 0 {
             let t = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();

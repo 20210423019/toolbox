@@ -202,6 +202,8 @@ export default function VideoDetail() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [tagSaving, setTagSaving] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
+  const detailReqRef = useRef(0);          // 防止跨库切换时旧请求覆盖新数据
+  const tagLoadReqRef = useRef(0);
 
   // 封面
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
@@ -261,11 +263,12 @@ export default function VideoDetail() {
 
   useEffect(() => {
     if (!video) return;
+    const reqId = ++detailReqRef.current;
     (async () => {
       try {
         const detail = await useAppStore.getState().getVideoDetail(video.id);
-        if (detail) {
-          useAppStore.setState({ currentVideo: detail.video });
+        if (detail && reqId === detailReqRef.current) {
+          // 不覆盖 global currentVideo — 由 openVideoDetail 负责
           setVideoTags(detail.tags);
           setSelectedTagIds(detail.tags.map(t => t.id));
           const values: Record<string, string> = {};
@@ -277,10 +280,11 @@ export default function VideoDetail() {
   }, [video?.id]);
 
   const refreshAllTags = useCallback(async (libId: string) => {
+    const reqId = ++tagLoadReqRef.current;
     try {
       const store = useAppStore.getState();
       const [result] = await Promise.all([store.searchClassTags("", libId), store.loadTagClasses(libId)]);
-      setAllTags(result);
+      if (reqId === tagLoadReqRef.current) setAllTags(result);
     } catch { }
   }, []);
 
@@ -414,10 +418,11 @@ export default function VideoDetail() {
   // ── 统一刷新所有标签状态（从后端拉取最新数据，确保左右面板同步） ──
   const refreshVideoTags = useCallback(async () => {
     if (!video) return;
+    const reqId = ++detailReqRef.current;
     try {
       const detail = await useAppStore.getState().getVideoDetail(video.id);
-      if (detail) {
-        useAppStore.setState({ currentVideo: detail.video });
+      if (detail && reqId === detailReqRef.current) {
+        // 不覆盖 global currentVideo
         setVideoTags(detail.tags);
         const ids = detail.tags.map(t => t.id);
         setSelectedTagIds(ids);

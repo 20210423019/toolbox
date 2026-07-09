@@ -7,6 +7,8 @@
 pub struct TagClass {
     pub id: String,
     pub library_id: String,
+    #[serde(default)]
+    pub category_id: String,
 
     pub parent_id: Option<String>,
     pub name: String,
@@ -30,6 +32,8 @@ pub struct TagName {
     pub id: String,
     pub class_id: String,
     pub library_id: String,
+    #[serde(default)]
+    pub category_id: String,
 
     pub name: String,
     #[serde(default)]

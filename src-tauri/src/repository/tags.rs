@@ -5,20 +5,20 @@ use crate::error::{AppError, AppResult};
 
 pub fn get_classes(conn: &Connection, library_id: &str) -> AppResult<Vec<TagClass>> {
     let mut stmt = conn.prepare(
-        "SELECT c.id,c.library_id,c.parent_id,c.name,c.color,c.icon,c.description,c.sort_order,
+        "SELECT c.id,c.library_id,COALESCE(c.category_id,''),c.parent_id,c.name,c.color,c.icon,c.description,c.sort_order,
                 c.created_at,c.updated_at,
                 (SELECT COUNT(*) FROM tag_classes WHERE parent_id=c.id) as child_count,
                 (SELECT COUNT(*) FROM class_tags WHERE class_id=c.id) as tag_count
-         FROM tag_classes c WHERE c.library_id=?1
+         FROM tag_classes c WHERE c.library_id=?1 OR c.category_id=(SELECT category_id FROM libraries WHERE id=?1)
          ORDER BY c.sort_order,c.name"
     ).map_err(AppError::Db)?;
     let classes = stmt.query_map(params![library_id], |row| {
         Ok(TagClass {
-            id: row.get(0)?, library_id: row.get(1)?, parent_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?, icon: row.get(5)?,
-            description: row.get(6)?, sort_order: row.get(7)?,
-            created_at: row.get(8)?, updated_at: row.get(9)?,
-            child_count: row.get(10)?, tag_count: row.get(11)?,
+            id: row.get(0)?, library_id: row.get(1)?, category_id: row.get(2)?, parent_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?, icon: row.get(6)?,
+            description: row.get(7)?, sort_order: row.get(8)?,
+            created_at: row.get(9)?, updated_at: row.get(10)?,
+            child_count: row.get(11)?, tag_count: row.get(12)?,
         })
     }).map_err(AppError::Db)?;
     Ok(classes.filter_map(|r| r.ok()).collect())
@@ -26,18 +26,18 @@ pub fn get_classes(conn: &Connection, library_id: &str) -> AppResult<Vec<TagClas
 
 pub fn get_class_by_id(conn: &Connection, id: &str) -> AppResult<TagClass> {
     conn.query_row(
-        "SELECT c.id,c.library_id,c.parent_id,c.name,c.color,c.icon,c.description,c.sort_order,
+        "SELECT c.id,c.library_id,COALESCE(c.category_id,''),c.parent_id,c.name,c.color,c.icon,c.description,c.sort_order,
                 c.created_at,c.updated_at,
                 (SELECT COUNT(*) FROM tag_classes WHERE parent_id=c.id) as child_count,
                 (SELECT COUNT(*) FROM class_tags WHERE class_id=c.id) as tag_count
          FROM tag_classes c WHERE c.id=?1",
         params![id],
         |row| Ok(TagClass {
-            id: row.get(0)?, library_id: row.get(1)?, parent_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?, icon: row.get(5)?,
-            description: row.get(6)?, sort_order: row.get(7)?,
-            created_at: row.get(8)?, updated_at: row.get(9)?,
-            child_count: row.get(10)?, tag_count: row.get(11)?,
+            id: row.get(0)?, library_id: row.get(1)?, category_id: row.get(2)?, parent_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?, icon: row.get(6)?,
+            description: row.get(7)?, sort_order: row.get(8)?,
+            created_at: row.get(9)?, updated_at: row.get(10)?,
+            child_count: row.get(11)?, tag_count: row.get(12)?,
         }),
     ).map_err(|e| match e {
         rusqlite::Error::QueryReturnedNoRows => AppError::NotFound { entity: "TagClass", id: id.to_string() },
@@ -47,9 +47,9 @@ pub fn get_class_by_id(conn: &Connection, id: &str) -> AppResult<TagClass> {
 
 pub fn insert_class(conn: &Connection, cls: &TagClass) -> AppResult<()> {
     conn.execute(
-        "INSERT INTO tag_classes (id,library_id,parent_id,name,color,icon,description,sort_order,created_at,updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-        params![cls.id, cls.library_id, cls.parent_id, cls.name, cls.color, cls.icon,
+        "INSERT INTO tag_classes (id,library_id,category_id,parent_id,name,color,icon,description,sort_order,created_at,updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+        params![cls.id, cls.library_id, cls.category_id, cls.parent_id, cls.name, cls.color, cls.icon,
                 cls.description, cls.sort_order, cls.created_at, cls.updated_at],
     ).map_err(AppError::Db)?;
     Ok(())
@@ -90,7 +90,7 @@ pub fn move_class(conn: &Connection, id: &str, new_parent_id: Option<&str>) -> A
 
 pub fn get_tags_by_class(conn: &Connection, class_id: &str) -> AppResult<Vec<TagName>> {
     let mut stmt = conn.prepare(
-        "SELECT t.id,t.class_id,t.library_id,t.name,t.color,t.sort_order,t.created_at,t.updated_at,
+        "SELECT t.id,t.class_id,t.library_id,COALESCE(t.category_id,''),t.name,t.color,t.sort_order,t.created_at,t.updated_at,
                 COALESCE((SELECT COUNT(*) FROM video_class_tags WHERE tag_id=t.id),0),
                 COALESCE(t.tag_type,'text')
          FROM class_tags t WHERE t.class_id=?1
@@ -98,11 +98,11 @@ pub fn get_tags_by_class(conn: &Connection, class_id: &str) -> AppResult<Vec<Tag
     ).map_err(AppError::Db)?;
     let tags = stmt.query_map(params![class_id], |row| {
         Ok(TagName {
-            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?,
-            sort_order: row.get(5)?, created_at: row.get(6)?, updated_at: row.get(7)?,
-            video_count: row.get(8)?,
-            tag_type: row.get(9)?,
+            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?, category_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?,
+            sort_order: row.get(6)?, created_at: row.get(7)?, updated_at: row.get(8)?,
+            video_count: row.get(9)?,
+            tag_type: row.get(10)?,
         })
     }).map_err(AppError::Db)?;
     Ok(tags.filter_map(|r| r.ok()).collect())
@@ -110,19 +110,19 @@ pub fn get_tags_by_class(conn: &Connection, class_id: &str) -> AppResult<Vec<Tag
 
 pub fn get_all_tags_by_library(conn: &Connection, library_id: &str) -> AppResult<Vec<TagName>> {
     let mut stmt = conn.prepare(
-        "SELECT t.id,t.class_id,t.library_id,t.name,t.color,t.sort_order,t.created_at,t.updated_at,
+        "SELECT t.id,t.class_id,t.library_id,COALESCE(t.category_id,''),t.name,t.color,t.sort_order,t.created_at,t.updated_at,
                 COALESCE((SELECT COUNT(*) FROM video_class_tags WHERE tag_id=t.id),0),
                 COALESCE(t.tag_type,'text')
-         FROM class_tags t WHERE t.library_id=?1
+         FROM class_tags t WHERE t.library_id=?1 OR t.category_id=(SELECT category_id FROM libraries WHERE id=?1)
          ORDER BY t.sort_order,t.name"
     ).map_err(AppError::Db)?;
     let tags = stmt.query_map(params![library_id], |row| {
         Ok(TagName {
-            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?,
-            sort_order: row.get(5)?, created_at: row.get(6)?, updated_at: row.get(7)?,
-            video_count: row.get(8)?,
-            tag_type: row.get(9)?,
+            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?, category_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?,
+            sort_order: row.get(6)?, created_at: row.get(7)?, updated_at: row.get(8)?,
+            video_count: row.get(9)?,
+            tag_type: row.get(10)?,
         })
     }).map_err(AppError::Db)?;
     Ok(tags.filter_map(|r| r.ok()).collect())
@@ -130,9 +130,9 @@ pub fn get_all_tags_by_library(conn: &Connection, library_id: &str) -> AppResult
 
 pub fn insert_tag(conn: &Connection, tag: &TagName) -> AppResult<()> {
     conn.execute(
-        "INSERT INTO class_tags (id,class_id,library_id,name,color,sort_order,tag_type,created_at,updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-        params![tag.id, tag.class_id, tag.library_id, tag.name, tag.color,
+        "INSERT INTO class_tags (id,class_id,library_id,category_id,name,color,sort_order,tag_type,created_at,updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+        params![tag.id, tag.class_id, tag.library_id, tag.category_id, tag.name, tag.color,
                 tag.sort_order, tag.tag_type, tag.created_at, tag.updated_at],
     ).map_err(AppError::Db)?;
     Ok(())
@@ -155,19 +155,19 @@ pub fn delete_tag(conn: &Connection, id: &str) -> AppResult<()> {
 pub fn search_tags(conn: &Connection, query: &str, library_id: &str) -> AppResult<Vec<TagName>> {
     let pattern = format!("%{}%", query);
     let mut stmt = conn.prepare(
-        "SELECT t.id,t.class_id,t.library_id,t.name,t.color,t.sort_order,t.created_at,t.updated_at,
+        "SELECT t.id,t.class_id,t.library_id,COALESCE(t.category_id,''),t.name,t.color,t.sort_order,t.created_at,t.updated_at,
                 COALESCE((SELECT COUNT(*) FROM video_class_tags WHERE tag_id=t.id),0),
                 COALESCE(t.tag_type,'text')
-         FROM class_tags t WHERE t.library_id=?1 AND t.name LIKE ?2
+         FROM class_tags t WHERE (t.library_id=?1 OR t.category_id=(SELECT category_id FROM libraries WHERE id=?1)) AND t.name LIKE ?2
          ORDER BY t.sort_order,t.name LIMIT 50"
     ).map_err(AppError::Db)?;
     let tags = stmt.query_map(params![library_id, pattern], |row| {
         Ok(TagName {
-            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?,
-            sort_order: row.get(5)?, created_at: row.get(6)?, updated_at: row.get(7)?,
-            video_count: row.get(8)?,
-            tag_type: row.get(9)?,
+            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?, category_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?,
+            sort_order: row.get(6)?, created_at: row.get(7)?, updated_at: row.get(8)?,
+            video_count: row.get(9)?,
+            tag_type: row.get(10)?,
         })
     }).map_err(AppError::Db)?;
     Ok(tags.filter_map(|r| r.ok()).collect())
@@ -175,7 +175,7 @@ pub fn search_tags(conn: &Connection, query: &str, library_id: &str) -> AppResul
 
 pub fn get_video_tag_details(conn: &Connection, video_id: &str) -> AppResult<Vec<(TagName, String)>> {
     let mut stmt = conn.prepare(
-        "SELECT t.id,t.class_id,t.library_id,t.name,t.color,t.sort_order,t.created_at,t.updated_at,
+        "SELECT t.id,t.class_id,t.library_id,COALESCE(t.category_id,''),t.name,t.color,t.sort_order,t.created_at,t.updated_at,
                 COALESCE((SELECT COUNT(*) FROM video_class_tags WHERE tag_id=t.id),0),
                 COALESCE(t.tag_type,'text'),
                 vt.value
@@ -185,13 +185,13 @@ pub fn get_video_tag_details(conn: &Connection, video_id: &str) -> AppResult<Vec
     ).map_err(AppError::Db)?;
     let tags = stmt.query_map(params![video_id], |row| {
         let tag = TagName {
-            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?,
-            name: row.get(3)?, color: row.get(4)?,
-            sort_order: row.get(5)?, created_at: row.get(6)?, updated_at: row.get(7)?,
-            video_count: row.get(8)?,
-            tag_type: row.get(9)?,
+            id: row.get(0)?, class_id: row.get(1)?, library_id: row.get(2)?, category_id: row.get(3)?,
+            name: row.get(4)?, color: row.get(5)?,
+            sort_order: row.get(6)?, created_at: row.get(7)?, updated_at: row.get(8)?,
+            video_count: row.get(9)?,
+            tag_type: row.get(10)?,
         };
-        let value: String = row.get(10)?;
+        let value: String = row.get(11)?;
         Ok((tag, value))
     }).map_err(AppError::Db)?;
     Ok(tags.filter_map(|r| r.ok()).collect())
@@ -220,7 +220,7 @@ pub fn get_video_taggings_batch(conn: &Connection, video_ids: &[String]) -> AppR
     if video_ids.is_empty() { return Ok(vec![]); }
     let placeholders: Vec<String> = (0..video_ids.len()).map(|i| format!("?{}", i + 1)).collect();
     let sql = format!(
-        "SELECT vt.video_id, t.id, t.class_id, t.library_id, t.name, t.color, t.sort_order,
+        "SELECT vt.video_id, t.id, t.class_id, t.library_id, COALESCE(t.category_id,''), t.name, t.color, t.sort_order,
                 t.created_at, t.updated_at,
                 COALESCE((SELECT COUNT(*) FROM video_class_tags WHERE tag_id=t.id),0),
                 COALESCE(t.tag_type,'text'),
@@ -235,13 +235,13 @@ pub fn get_video_taggings_batch(conn: &Connection, video_ids: &[String]) -> AppR
     let results = stmt.query_map(refs.as_slice(), |row| {
         let video_id: String = row.get(0)?;
         let tag = TagName {
-            id: row.get(1)?, class_id: row.get(2)?, library_id: row.get(3)?,
-            name: row.get(4)?, color: row.get(5)?,
-            sort_order: row.get(6)?, created_at: row.get(7)?, updated_at: row.get(8)?,
-            video_count: row.get(9)?,
-            tag_type: row.get(10)?,
+            id: row.get(1)?, class_id: row.get(2)?, library_id: row.get(3)?, category_id: row.get(4)?,
+            name: row.get(5)?, color: row.get(6)?,
+            sort_order: row.get(7)?, created_at: row.get(8)?, updated_at: row.get(9)?,
+            video_count: row.get(10)?,
+            tag_type: row.get(11)?,
         };
-        let value: String = row.get(11)?;
+        let value: String = row.get(12)?;
         Ok((video_id, tag, value))
     }).map_err(AppError::Db)?;
     Ok(results.filter_map(|r| r.ok()).collect())
@@ -306,7 +306,7 @@ pub fn build_tag_tree(conn: &Connection, library_id: &str, parent_id: Option<&st
     let classes = if let Some(pid) = parent_id {
         let mut stmt = conn.prepare(
             "SELECT id,name,color,icon,(SELECT COUNT(*) FROM class_tags WHERE class_id=tc.id)
-             FROM tag_classes tc WHERE library_id=?1 AND parent_id=?2 ORDER BY sort_order,name"
+             FROM tag_classes tc WHERE (tc.library_id=?1 OR tc.category_id=(SELECT category_id FROM libraries WHERE id=?1)) AND parent_id=?2 ORDER BY sort_order,name"
         ).map_err(AppError::Db)?;
         let rows = stmt.query_map(params![library_id, pid], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, String>(3)?, row.get::<_, i64>(4)?))
@@ -315,7 +315,7 @@ pub fn build_tag_tree(conn: &Connection, library_id: &str, parent_id: Option<&st
     } else {
         let mut stmt = conn.prepare(
             "SELECT id,name,color,icon,(SELECT COUNT(*) FROM class_tags WHERE class_id=tc.id)
-             FROM tag_classes tc WHERE library_id=?1 AND parent_id IS NULL ORDER BY sort_order,name"
+             FROM tag_classes tc WHERE (tc.library_id=?1 OR tc.category_id=(SELECT category_id FROM libraries WHERE id=?1)) AND parent_id IS NULL ORDER BY sort_order,name"
         ).map_err(AppError::Db)?;
         let rows = stmt.query_map(params![library_id], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?, row.get::<_, String>(3)?, row.get::<_, i64>(4)?))
@@ -355,12 +355,17 @@ pub fn load_template(conn: &Connection, library_id: &str, template_nodes: &[TagC
     if parent_id.is_none() {
         validate_template_structure(template_nodes, true)?;
     }
+    // 获取 category_id
+    let cat_id: String = conn
+        .query_row("SELECT category_id FROM libraries WHERE id=?1", params![library_id], |r| r.get(0))
+        .unwrap_or_default();
     let now = chrono::Utc::now().to_rfc3339();
     for node in template_nodes {
         let new_id = uuid::Uuid::new_v4().to_string();
         let cls = TagClass {
             id: new_id.clone(),
             library_id: library_id.to_string(),
+            category_id: cat_id.clone(),
             parent_id: parent_id.map(|s| s.to_string()),
             name: node.name.clone(),
             color: node.color.clone(),
@@ -379,6 +384,7 @@ pub fn load_template(conn: &Connection, library_id: &str, template_nodes: &[TagC
                 id: new_tag_id,
                 class_id: new_id.clone(),
                 library_id: library_id.to_string(),
+                category_id: cat_id.clone(),
                 name: tag.name.clone(),
                 color: tag.color.clone(),
                 sort_order: tag.sort_order,

@@ -8,6 +8,9 @@ fn now() -> String { chrono::Utc::now().to_rfc3339() }
 fn conn<'a>(db: &'a State<'a, DbPool>) -> Result<std::sync::MutexGuard<'a, rusqlite::Connection>, String> {
     db.app.lock().map_err(|e| e.to_string())
 }
+fn get_category_id(c: &rusqlite::Connection, library_id: &str) -> String {
+    c.query_row("SELECT category_id FROM libraries WHERE id=?1", rusqlite::params![library_id], |r| r.get(0)).unwrap_or_default()
+}
 
 
 #[tauri::command]
@@ -17,8 +20,9 @@ pub fn get_tag_classes_by_library(db: State<DbPool>, library_id: String) -> Resu
 #[tauri::command]
 pub fn create_tag_class(db: State<DbPool>, library_id: String, name: String, parent_id: Option<String>, color: Option<String>, icon: Option<String>) -> Result<TagClass, String> {
     let c = conn(&db)?;
+    let cat_id = get_category_id(&c, &library_id);
     let cls = TagClass {
-        id: uuid::Uuid::new_v4().to_string(), library_id, parent_id, name,
+        id: uuid::Uuid::new_v4().to_string(), library_id, category_id: cat_id, parent_id, name,
         color: color.unwrap_or_else(|| "#059669".to_string()), icon: icon.unwrap_or_default(),
         description: String::new(), sort_order: 0, created_at: now(), updated_at: now(),
         child_count: 0, tag_count: 0,
@@ -45,8 +49,7 @@ pub fn move_tag_class(db: State<DbPool>, id: String, new_parent_id: Option<Strin
 #[tauri::command]
 pub fn copy_tag_class(db: State<DbPool>, id: String, new_parent_id: Option<String>) -> Result<TagClass, String> {
     let c = conn(&db)?;
-    let classes = repository::tags::get_classes(&c, "").map_err(|e| e.to_string())?;
-    let source = classes.into_iter().find(|c2| c2.id == id).ok_or_else(|| "标签类未找到".to_string())?;
+    let source = repository::tags::get_class_by_id(&c, &id).map_err(|e| e.to_string())?;
     let copy = TagClass {
         id: uuid::Uuid::new_v4().to_string(), name: format!("{}（副本）", source.name),
         parent_id: new_parent_id, created_at: now(), updated_at: now(), ..source
@@ -63,8 +66,9 @@ pub fn get_class_tags(db: State<DbPool>, class_id: String) -> Result<Vec<TagName
 #[tauri::command]
 pub fn create_class_tag(db: State<DbPool>, class_id: String, library_id: String, name: String, color: Option<String>) -> Result<TagName, String> {
     let c = conn(&db)?;
+    let cat_id = get_category_id(&c, &library_id);
     let tag = TagName {
-        id: uuid::Uuid::new_v4().to_string(), class_id, library_id, name,
+        id: uuid::Uuid::new_v4().to_string(), class_id, library_id, category_id: cat_id, name,
         color: color.unwrap_or_else(|| "#059669".to_string()),
         sort_order: 0, created_at: now(), updated_at: now(), video_count: 0,
         tag_type: "text".into(),
@@ -148,11 +152,13 @@ pub fn batch_create_and_tag_videos(
     tag_value: String,
 ) -> Result<String, String> {
     let c = conn(&db)?;
+    let cat_id = get_category_id(&c, &library_id);
     // 1. 创建标签
     let tag = crate::domain::tag::TagName {
         id: uuid::Uuid::new_v4().to_string(),
         class_id: class_id.clone(),
         library_id: library_id.clone(),
+        category_id: cat_id,
         name: tag_name.clone(),
         color: "#059669".to_string(),
         sort_order: 0,
