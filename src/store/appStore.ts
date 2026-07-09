@@ -554,7 +554,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateCategorySort: async (id, sortOrder) => {
     try {
       await invoke("update_category_sort", { id, sortOrder });
-      set({ categories: get().categories.map(c => c.id === id ? { ...c, sort_order: sortOrder } : c) });
+      set({
+        categories: get().categories
+          .map(c => c.id === id ? { ...c, sort_order: sortOrder } : c)
+          .sort((a, b) => a.sort_order - b.sort_order)
+      });
     } catch (e) {
       notify({ type: "error", title: "更新排序失败", message: String(e) });
     }
@@ -562,11 +566,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateLibrarySort: async (id, sortOrder) => {
     try {
       await invoke("update_library_sort", { id, sortOrder });
-      // 同步更新 libraries 中对应库的 sort_order
+      // 同步更新 libraries 中对应库的 sort_order 并重排
       set((s) => {
         const libs = { ...s.libraries };
         for (const catId of Object.keys(libs)) {
-          libs[catId] = libs[catId].map((l: any) => l.id === id ? { ...l, sort_order: sortOrder } : l);
+          libs[catId] = [...libs[catId]]
+            .map((l: any) => l.id === id ? { ...l, sort_order: sortOrder } : l)
+            .sort((a: any, b: any) => a.sort_order - b.sort_order);
         }
         return { libraries: libs };
       });
