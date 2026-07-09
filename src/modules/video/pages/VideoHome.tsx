@@ -189,7 +189,6 @@ export default function VideoHome() {
 
   const handleLibClick = (lib: any) => {
     const s = useAppStore.getState();
-    s.setCurrentLibrary(lib.id);
     // Push sub-page to create navigation history
     if (s.activeTabId) {
       s.pushSubPage(s.activeTabId, { pageId: `library-${lib.id}`, label: lib.name });

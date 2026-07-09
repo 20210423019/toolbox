@@ -1132,7 +1132,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           set({ tabStates: { ...s.tabStates, [s.activeTabId]: state } });
         }
       }
-      set({ activeTabId: null, currentPage: "video-home" });
+      set({ activeTabId: null, currentPage: "video-home", currentVideo: null });
       return;
     }
     if (s.activeTabId) {
@@ -1164,6 +1164,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           const v = s.videos.find(v => v.id === videoId) || s.tabStates[id]?.pageCurrentVideo;
           if (v) extra.currentVideo = v;
         }
+      } else if (pageId.startsWith("library-") || pageId === "video-home") {
+        // 切换到非详情页时清空 currentVideo，防止残留
+        extra.currentVideo = null;
       }
       set({ activeTabId: id, currentPage: pageId, ...extra });
     } else {
@@ -1171,6 +1174,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (pageId.startsWith("library-")) {
         const libId = pageId.slice("library-".length);
         if (libId) extra.currentLibraryId = libId;
+      }
+      if (pageId.startsWith("library-") || pageId === "video-home") {
+        extra.currentVideo = null;
       }
       const newTab = { id, label: label || pageId, pageId };
       set({ tabs: dedupTabs([...s.tabs, newTab]), activeTabId: id, currentPage: pageId, ...extra });
@@ -1191,10 +1197,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newActive = s.activeTabId === tabId ? (remaining.length > 0 ? remaining[remaining.length - 1].id : null) : s.activeTabId;
     const newPage = newActive ? (s.tabs.find(t => t.id === newActive)?.pageId || "video-home") : "video-home";
     const newModule = newActive ? (moduleConfigs.find(m => m.navItems.some(n => n.pageId === newPage))?.id || "video") : "video";
+    // 恢复目标 tab 的 state
+    const extra: Record<string, any> = {};
+    if (newPage.startsWith("library-")) {
+      const libId = newPage.slice("library-".length);
+      if (libId) extra.currentLibraryId = libId;
+    } else if (newPage === "detail" && newActive) {
+      const tabState = s.tabStates[newActive];
+      if (tabState?.pageCurrentVideo) extra.currentVideo = tabState.pageCurrentVideo;
+      extra.currentLibraryId = null;
+    } else if (newPage === "video-home") {
+      extra.currentLibraryId = null;
+      extra.currentVideo = null;
+    }
     set({
       tabs: remaining, activeTabId: newActive, currentPage: newPage, currentModuleId: newModule,
       tabStates: Object.fromEntries(Object.entries(s.tabStates).filter(([k]) => k !== tabId)),
       tabRoutes: Object.fromEntries(Object.entries(s.tabRoutes).filter(([k]) => k !== tabId)),
+      ...extra,
     });
   },
   pushSubPage: (tabId, subPage) => set((s) => ({ tabRoutes: { ...s.tabRoutes, [tabId]: [...(s.tabRoutes[tabId] || []), subPage] } })),
